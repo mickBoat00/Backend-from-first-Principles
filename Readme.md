@@ -959,30 +959,124 @@ CORS (Cross Origin Resource Sharing)
                 5. brute force attack
                     rate limiting auth endpoints. being more restrictive than other endpoints 
 
+                    attacker can send thousands of request and because their is not rate limit, 
+                    all the request will go through
+
+                    2 things can happen
+                        1. They will find a match and access to user account through brute forcing.
+                        2. overload server until it crashs
+
                     implement layers of rate limit 
                         1. per ip 
-                        2. per failed attempt on an attempt
-                        3. global rate limit as a number of failed login in attempts
+                        2. per failed attempt on an account
+                        3. global rate limit as a number of failed login in attempts in a given timeframe
+
 
 
             3. Authorization
-                user are in our system. what are the permitted to do or see?
+                user are in our system. what are they permitted to do or see?
 
+                false sense of security after user is authenticated. 
 
-        
-                    
+                issues 
+                    Broken object level authorization: 
+                        Our system does not check authorization of user on individual objects at the database layer but check authorization 
+                        in the routing layer.    
 
-
-
-
-
-
-
-
-
+                        fix 
+                            eventhough we check authorization in our routing layer, read invoices, 
 
 
 
+                        user being able to pass auth checks and authorization checks like read:invoices 
+                        does not mean they have access to all invoices in our system
+
+                    Broken function role authorization 
+                        instead of checking granular permission like read:voices 
+                        makes normal user access to an endpoint that reads all the invoices like /admin/invoices
+                        we need an extra middleware should create the role of the user at the role level 
+                        so only admins are authorized to use a specific route. 
+
+
+
+                    indirect object reference
+
+                    broken access control patterns 
+
+                prevent authorization attacks 
+                    centralized place of auth logic
+                    default deny 
+                    automated testing of authorization specfically 
+                    audit logs every time a sensitive resource is accesssed, it should be logged , authorization check fails 
+
+
+
+            3. Cross site scription XSS
+                attacker manage to get any js to execute in a users browser in the content of our website/
+
+user provide content we have to be careful
+    storing it
+    processing it 
+    file handling
+
+we have to be every careful of how we are handling it 
+what kind of access we have given, resource 
+
+xss user provided markup like html, markup with a hidden script tag that is stored 
+and how once we can get out of 99% of vulnerabilities 
+
+
+
+Content security policies 
+    http header sent by server to browser
+
+
+
+Routing 
+
+    Http methods describes the intent or what we want to do on that particular resource
+
+    routing define where or which or the resources do we want to perform our intent on .
+
+    routing is mapping a url parameter to a server side logic 
+
+    GET /api/books HTTP/1.1
+    POST /api/books HTTP/1.1 
+    the methods and route mapps to a particular handler on the server side to perform some logic 
+
+
+    types of routing 
+        1. Static routes: /api/books do not have a variable parameter inside the route
+
+        2. Dynamic route /api/books/:id have a variable inside the route. The dynamic part is called the path/route parameter
+
+        3. Query parameter /api/search?query=:searchterm
+
+
+
+
+
+
+
+
+Controller, service, repository 
+    Request lifecycle in ths server
+
+
+    1. Request reaches the server. OS forward the http request to the port our backend is listen on
+    2. Server is listening, server has routing algorithm, depending on the algo, we match the request to a particular handler/controller
+    3. Server application has handler , services and repository why is there a seperation, why cant we just have one big fun that accept request, do some processing and query and return a response. 
+
+    4. it is a design pattern to our code based is scalable, easy to add features and debug issues. 
+
+    5. in each handler, we recieve two objects request and response objects
+    6. deserialize the json object into your lang native data format, like java , request failed send client 400 Bad request
+    7. production grade there should be a validation layer. we should validate every input to our server, validate request body, query params, path params etc
+
+    client data is in the expected format. optionally transformation, some modification for our server to process the request
+
+    controller layer calls the service layer with all the data it has transform
+    service layer do not dealing with http related stuff    
 
 
 
@@ -1005,12 +1099,6 @@ CORS (Cross Origin Resource Sharing)
 
 
 
-
-
-
-
-    Browser based security like cookies and http
-    Net
 
 
 
