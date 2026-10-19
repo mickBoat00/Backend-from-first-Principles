@@ -1,3 +1,695 @@
+# Backend from first principles
+
+## Table of contents
+
+1. [Introduction](#1-introduction)
+    a. [Why backend from first principles](#a-why-backend-from-first-principles)
+2. [What is a backend, how a request gets to the backend, and why we need backends](#2-what-is-a-backend-how-a-request-gets-to-the-backend-and-why-we-need-backends)
+    a. [What is a backend?](#a-what-is-a-backend)
+    b. [How does a request get to your backend server from a user's browser](#b-how-does-a-request-get-to-your-backend-server-from-a-users-browser)
+    c. [Why do we need a backend, and can't we do everything on the frontend?](#c-why-do-we-need-a-backend-and-cant-we-do-everything-on-the-frontend)
+
+3. [HTTP Protocol](#3-http-protocol)
+    i. [Two ideas at the heart of HTTP](#i-two-ideas-at-the-heart-of-http)
+    ii. [HTTP Versions](#ii-http-versions)
+    iii. [HTTP message](#iii-http-message)
+    iv. [HTTP Headers](#iv-http-headers)
+        a. [Why headers](#a-why-headers)
+        b. [HTTP header types](#b-http-header-types)
+        c. [Benefits of headers](#c-benefits-of-headers)
+    v. [HTTP methods](#v-http-methods)
+        a. [Idempotent vs Non Idempotent](#a-idempotent-vs-non-idempotent)
+        b. [Cross Origin Resource Sharing (CORS)](#b-cross-origin-resource-sharing-cors)
+            i. [Simple request](#i-simple-request)
+            ii. [Preflight request](#ii-preflight-request)
+    vi. [HTTP response code](#vi-http-response-code)
+    vii. [HTTP caching](#vii-http-caching)
+    viii. [HTTP content negotiation](#viii-http-content-negotiation)
+    ix. [HTTP based compression](#ix-http-based-compression)
+    x. [Handling large request and response](#x-handling-large-request-and-response)
+
+4. [Routing](#4-routing)
+    i. [Types of routing](#i-types-of-routing)
+        a. [Static routes](#a-static-routes)
+        b. [Dynamic route](#b-dynamic-route)
+        c. [Query parameter](#c-query-parameter)
+        d. [Nested route](#d-nested-route)
+        e. [Route versioning and deprecation](#e-route-versioning-and-deprecation)
+        f. [Catch all route](#f-catch-all-route)
+5. [Serialization and Deserialization](#5-serialization-and-deserialization)
+    i. [The language barrier](#i-the-language-barrier)
+    ii. [Solution](#ii-solution)
+    iii. [The flow](#iii-the-flow)
+    iv. [OSI model](#iv-osi-model)
+    v. [Serialization standards](#v-serialization-standards)
+
+---
+
+<h2 id="1-introduction"><u>1. Introduction</u></h2>
+<div style="margin-left: 2em;">
+
+<p>Backend is not just about building CRUD APIs. To me, backend is about building reliable, scalable, fault tolerant, maintainable and efficient systems.</p>
+
+<p>But how do we learn to build such systems? There are a lot of concepts concerning backend development on the internet, but how do we understand the big picture? When and how do these concepts come together to build such systems?</p>
+
+<p>Secondly, we usually learn backend from a programming language or a framework's point of view, but how much of this knowledge can we transfer when we are to work with other frameworks?</p>
+
+<p>Hence these notes cover the foundational concepts that are abstracted by the languages and frameworks we use every day, and how these foundational concepts come together to build a production grade backend.</p>
+
+<h3 id="a-why-backend-from-first-principles">a. Why backend from first principles</h3>
+<div style="margin-left: 2em;">
+
+<ol>
+<li>Understanding the core concepts that remain the same across every backend system</li>
+<li>Elevate me from a framework developer to a true software engineer</li>
+<li>Get up to speed quickly when asked to build with a different language / framework</li>
+<li>Understanding the core concepts helps me choose the right tool for the right job, whether choosing a programming language, or using DB search against Elasticsearch, Redis for caching</li>
+</ol>
+
+</div>
+</div>
+
+---
+
+<h2 id="2-what-is-a-backend-how-a-request-gets-to-the-backend-and-why-we-need-backends"><u>2. What is a backend, how a request gets to the backend, and why we need backends</u></h2>
+<div style="margin-left: 2em;">
+
+<h3 id="a-what-is-a-backend">a. What is a backend?</h3>
+<div style="margin-left: 2em;">
+
+<p>A backend is an application on a computer on the internet that is listening for a request — whether HTTP, gRPC, WebSocket, or any kind of request — through an open port, and sends a response.</p>
+
+<p>It can be termed a server because it serves some kind of content, like static files (HTML, CSS, JS) or data in JSON.</p>
+
+</div>
+
+<h3 id="b-how-does-a-request-get-to-your-backend-server-from-a-users-browser">b. How does a request get to your backend server from a user's browser</h3>
+<div style="margin-left: 2em;">
+
+<ol>
+<li>The browser needs to find the IP address of our backend server from our domain name.</li>
+<li>It makes a request to a DNS server for our domain. Our domain contains different types of records:
+    <ul>
+    <li><strong>A record</strong> — maps a domain / subdomain to an IP address</li>
+    <li><strong>CNAME record</strong> — maps a domain to another domain</li>
+    </ul>
+</li>
+<li>It gets the IP address from the A record and sends the request.</li>
+<li>When the request reaches our backend server's network, the firewall allows or blocks the request depending on whether HTTPS / HTTP is allowed.</li>
+<li>The request reaches our server and goes to our reverse proxy, Nginx. The reverse proxy is used for many things, but one of them is to route to the right service. For example, if our server has both frontend and backend running, it routes to the backend.</li>
+<li>The response is sent back to the user's browser.</li>
+</ol>
+
+<p><strong>Summary</strong></p>
+
+<pre><code>user browser → DNS server → Network firewall → Server → Nginx → backend application
+</code></pre>
+
+</div>
+
+<h3 id="c-why-do-we-need-a-backend-and-cant-we-do-everything-on-the-frontend">c. Why do we need a backend, and can't we do everything on the frontend?</h3>
+<div style="margin-left: 2em;">
+
+<p>Backend is usually used to work with data: the need to fetch data, receive data, persist data somewhere, and every kind of action that deals with data.</p>
+
+<p>Why can't we do everything on the frontend, such that we would need a separate backend?</p>
+
+<p>To understand why, we need to understand how frontends work.</p>
+
+<pre><code>user browser → DNS server → Network firewall → Server → Nginx → frontend application
+</code></pre>
+
+<ol>
+<li>When the user's browser makes a request to our frontend server, it receives the first document, which is an HTML document.</li>
+<li>While the user's browser is parsing the HTML, it sees links to CSS, JS, images, etc., and makes individual requests for them.</li>
+<li>The browser paints the page with the CSS content, and adds interactivity to the page from the JS content.</li>
+</ol>
+
+<p>A key thing to note is that for every user, their runtime is the browser. The browser executes the HTML, CSS, and JS code.</p>
+
+<p>Why can't it also execute code to fetch, persist, and perform actions with data?</p>
+
+<p>Browsers are built with security in mind because they execute code from the internet on the user's machine. Hence browsers are:</p>
+
+<ol>
+<li><strong>Sandboxed environments</strong> — isolated from the OS and filesystem, so the code can only access a limited amount of resources, e.g. DOM, Web APIs, external APIs. This prevents remote code from accessing files and data from the user's computer. A backend needs to access the underlying filesystem to write to a log file, and to access environment variables.</li>
+<li><strong>CORS</strong> — limited access to external APIs via CORS.</li>
+<li><strong>Database drivers</strong> — persisting data in a database requires a DB driver, and these are built for environments that handle socket connections, binary data, and maintain persistent connections. Browsers can't do that.</li>
+<li><strong>Computing power</strong> — users access frontends from various devices. User devices may not have enough computing power to perform certain business logic.</li>
+</ol>
+
+</div>
+</div>
+
+---
+
+<h2 id="3-http-protocol"><u>3. HTTP Protocol</u></h2>
+<div style="margin-left: 2em;">
+
+<p>Where it all begins.</p>
+
+<p>When a user visits a website in their browser, the browser requests a webpage from a computer somewhere on the internet and displays it for the user. Computers on the internet are identified by IP address, hence the browser resolves the domain, e.g. http://myfrontend.com, to an IP address. The domain on the DNS server has an A record that points a domain name to an IP address.</p>
+
+<p>That computer with the webpage is a server because it is a computer which clients, e.g. the user's browser or an application, request resources from.</p>
+
+<p>Now that the IP address is found, there has to be a connection before the client and server can communicate.</p>
+
+<p>There are various ways clients and servers communicate, and one of the most common is a protocol called HTTP, HyperText Transfer Protocol. It is a standardized way of communication between clients and servers. HTTP uses TCP as its underlying protocol for client server connection, because before any communication has to take place, a connection has to be established.</p>
+
+<h3 id="i-two-ideas-at-the-heart-of-http">i. Two ideas at the heart of HTTP</h3>
+<div style="margin-left: 2em;">
+
+<p>HTTP has 2 main ideas at its heart.</p>
+
+<ol>
+<li>
+<p><strong>Statelessness:</strong> When a client and server are communicating through HTTP request and response, servers do not keep any client session data, so they do not remember past requests. Hence the client has to send all the necessary information in the request to get the desired response.</p>put your stop loss at your 
+<p>E.g. the client sends login credentials in a request and receives a response of successful login. Subsequent requests after that, if the client does not send the necessary information in the form of a cookie or token, the server will not remember that the client is logged in.</p>
+</li>
+<li>
+<p><strong>Client server model:</strong> With HTTP protocol the client always initiates the communication. Servers do not initiate communications.</p>
+</li>
+</ol>
+
+</div>
+
+<h3 id="ii-http-versions">ii. HTTP Versions</h3>
+<div style="margin-left: 2em;">
+
+<p>Over the years HTTP evolved to improve client server interaction. Starting from:</p>
+
+<ul>
+<li><strong>HTTP/1.0:</strong> The TCP connection is closed after every request response cycle. Leading to latency and being resource intensive.</li>
+<li><strong>HTTP/1.1:</strong> The same TCP connection can be used to send multiple requests and receive multiple responses.</li>
+<li><strong>HTTP/2:</strong> Multiplexing. HTTP/1.1 had an issue called head of line blocking, where until the initial request has been responded to, all the current requests will have to wait. HTTP/2 sends many requests on the same TCP connection so one slow response does not block the others at the HTTP layer.</li>
+<li><strong>HTTP/3:</strong> Uses QUIC over UDP as its underlying protocol for communication.</li>
+</ul>
+
+<p>HTTP/1.1 is still widely used today.</p>
+
+</div>
+
+<h3 id="iii-http-message">iii. HTTP message</h3>
+<div style="margin-left: 2em;">
+
+<p>A typical HTTP request has an HTTP method, a URL, HTTP version, HTTP headers, and an optional body.</p>
+
+<p>A typical HTTP response has an HTTP version, a status code, HTTP headers, and an optional body.</p>
+
+<p><strong>HTTP request example</strong></p>
+
+<pre><code>PUT /api/users/12 HTTP/1.1
+Host: backend.com
+User-Agent: Mozilla/5.0
+Accept: application/json
+Authorization: Bearer eyJhbGciOi...
+Content-Type: application/json
+
+{
+    "name": "Ama Mensa"
+}</code></pre>
+
+<p><strong>HTTP response example</strong></p>
+
+<pre><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 50
+
+{
+    "msg": "User updated"
+}</code></pre>
+
+</div>
+
+<h3 id="iv-http-headers">iv. HTTP Headers</h3>
+<div style="margin-left: 2em;">
+
+<p>HTTP headers are metadata which are key value pairs of an HTTP message. They provide certain information about the HTTP message like the content-type, date of the message, and security features.</p>
+
+<h4 id="a-why-headers">a. Why headers</h4>
+<div style="margin-left: 2em;">
+
+<p>When sending a package, think of HTTP headers as the info that is pasted on the package, like where the package is going to, so others do not have to open the package to view its content.</p>
+
+</div>
+
+<h4 id="b-http-header-types">b. HTTP header types</h4>
+<div style="margin-left: 2em;">
+
+<ul>
+<li><strong>Request headers</strong> — used to understand client env, preference and capabilities. E.g. User-Agent, Authorization, Accept, Cookie.</li>
+<li><strong>General headers</strong> — general info about the HTTP message. E.g. Date, Cache-Control, Connection.</li>
+<li><strong>Representation headers</strong> — info about the HTTP message's body so client and server know how to interpret them. E.g. Content-Length, Content-Encoding, ETag.</li>
+<li><strong>Security headers</strong> — enhance the security of the HTTP request/response. E.g. Strict-Transport-Security (HSTS), Content-Security-Policy (CSP), Set-Cookie.</li>
+</ul>
+
+</div>
+
+<h4 id="c-benefits-of-headers">c. Benefits of headers</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>Extensible:</strong> HTTP headers make HTTP extensible because they give room to easily add custom headers for new features or security enhance without altering the underlying protocol.</p>
+
+<p><strong>Remote control:</strong> Headers act as remote control, where clients can influence or control the kind of behaviour they want from the server. E.g. the client wants a response in Spanish instead of English with <code>Accept-Language: es</code>.</p>
+
+</div>
+</div>
+
+<h3 id="v-http-methods">v. HTTP methods</h3>
+<div style="margin-left: 2em;">
+
+<p>HTTP methods are verbs which show the action the client wants the server to perform on a particular resource. HTTP messages show the client's intent on a particular resource.</p>
+
+<p>There are a number of HTTP methods and the most used ones are as follows:</p>
+
+<ul>
+<li><strong>GET</strong> — get a resource from the server</li>
+<li><strong>POST</strong> — create a resource on the server</li>
+<li><strong>PUT</strong> — update and completely replace a resource on the server</li>
+<li><strong>PATCH</strong> — update certain parts of a resource on the server</li>
+<li><strong>DELETE</strong> — delete a resource from the server</li>
+<li><strong>OPTIONS</strong> — used in CORS preflight request</li>
+</ul>
+
+<h4 id="a-idempotent-vs-non-idempotent">a. Idempotent vs Non Idempotent</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>Idempotent</strong> means retry a request, or send the same request multiple times, will have the same effect on the resource. Idempotent methods: GET, PUT, DELETE.</p>
+
+<p><strong>Non idempotent</strong> means retry a request, or sending a request multiple times, will have a different effect on the resource. Two POSTs can both return 201 and still create two rows. Non idempotent method: POST.</p>
+
+</div>
+
+<h4 id="b-cross-origin-resource-sharing-cors">b. Cross Origin Resource Sharing (CORS)</h4>
+<div style="margin-left: 2em;">
+
+<p>By default browsers have a same origin policy. For a simple cross origin request the browser still sends the request. It hides the response from JS if <code>Access-Control-Allow-Origin</code> does not match.</p>
+
+<p>E.g. JS from the domain myfrontend.com makes a request for products from mybackend.com, which is a different domain. The browser noticing that adds an additional header to the request:</p>
+
+<pre><code>Origin: https://myfrontend.com</code></pre>
+
+<p>When the response comes from the server, the browser also checks the <code>Access-Control-Allow-Origin</code> header in the response. If the page's origin is not included, like <code>Access-Control-Allow-Origin: https://myfrontend.com</code> or <code>Access-Control-Allow-Origin: *</code>, the browser blocks the JS from getting access to the response.</p>
+
+<p>There are two types of request that are made with CORS.</p>
+
+<h5 id="i-simple-request">i. Simple request</h5>
+<div style="margin-left: 2em;">
+
+<p>Simple requests are requests made without a preflight OPTIONS request.</p>
+
+</div>
+
+<h5 id="ii-preflight-request">ii. Preflight request</h5>
+<div style="margin-left: 2em;">
+
+<p>Preflight is required to enquire the capabilities of the different domain's server.</p>
+
+<p>There are a few things the browser checks to make a preflight request:</p>
+
+<ol>
+<li>The HTTP method is not GET, POST, HEAD. PUT and DELETE requests send a preflight request of OPTIONS before the actual request.</li>
+<li><strong>OR</strong> the request includes non simple headers like Authorization or X-Custom-Header.</li>
+<li><strong>OR</strong> the request has Content-Type other than application/x-www-form-urlencoded, multipart/form-data or text/plain.</li>
+</ol>
+
+<p>When an HTTP request to a different domain meets any of the criteria above, the browser sends a preflight request, which is an HTTP request with an OPTIONS method, to enquire the capabilities of the server.</p>
+
+<p>E.g. a request made by the frontend to the backend to update a user's order:</p>
+
+<pre><code>PATCH /api/order/1 HTTP/1.1
+Host: mybackend.com
+Origin: https://myfrontend.com
+Content-Type: application/json
+Authorization: Bearer eyuid...
+
+{
+    "status": "pending"
+}</code></pre>
+
+<p>will trigger a preflight request because the conditions were met.</p>
+
+<pre><code>OPTIONS /api/order/1 HTTP/1.1
+Host: mybackend.com
+Origin: https://myfrontend.com
+Access-Control-Request-Method: PATCH
+Access-Control-Request-Headers: Authorization, Content-Type</code></pre>
+
+<p>Server response:</p>
+
+<pre><code>HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: https://myfrontend.com
+Access-Control-Allow-Methods: PATCH, PUT, DELETE
+Access-Control-Allow-Headers: Authorization, Content-Type
+Access-Control-Max-Age: 86400</code></pre>
+
+<p>The server says it allows these methods on that URL, and this response will be the same for the next 86400 seconds, so do not make another preflight again. Then the original PATCH request is sent:</p>
+
+<pre><code>HTTP/1.1 200 OK
+Access-Control-Allow-Origin: https://myfrontend.com
+Content-Type: application/json
+
+{
+    "msg": "Order updated"
+}</code></pre>
+
+</div>
+</div>
+</div>
+
+<h3 id="vi-http-response-code">vi. HTTP response code</h3>
+<div style="margin-left: 2em;">
+
+<p>Quickly communicate the result of a request in a standardized way. Standardized means consistency between how a server should communicate the results of the request. There should not be a case where the status code is telling a different message from the body. This standard is what our servers should follow.</p>
+
+<ul>
+<li><strong>1xx</strong> — information</li>
+<li><strong>2xx</strong> — success</li>
+<li><strong>3xx</strong> — redirect</li>
+<li><strong>4xx</strong> — client error</li>
+<li><strong>5xx</strong> — server error</li>
+</ul>
+
+<p><strong>1xx information</strong></p>
+<p>Used for information to the clients. Can be used in a situation where the request is huge, when the headers are sent before the body.</p>
+<ul>
+<li><strong>100 Continue</strong> — headers received, continuing with the body.</li>
+<li><strong>101 Switching Protocol</strong> — the communication protocol for the URL has changed, e.g. from HTTP to WebSocket.</li>
+</ul>
+
+<p><strong>2xx success</strong></p>
+<ul>
+<li><strong>200 OK</strong> — request was successful and the server sent requested resources or performed the requested action.</li>
+<li><strong>201 Created</strong> — successful creating a new resource.</li>
+<li><strong>204 No Content</strong> — successful but no content.</li>
+</ul>
+
+<p><strong>3xx redirection</strong></p>
+<ul>
+<li><strong>301 Moved Permanently</strong> — requested resource has been permanently moved to a new URL.</li>
+<li><strong>302 Moved Temporarily</strong> — for now moved to a temporary URL.</li>
+<li><strong>304 Not Modified</strong> — used in caching.</li>
+</ul>
+
+<p><strong>4xx client error</strong></p>
+<ul>
+<li><strong>400 Bad Request</strong> — client sends invalid data.</li>
+<li><strong>401 Unauthorized</strong> — request requires valid authentication.</li>
+<li><strong>403 Forbidden</strong> — refused to authorize the request.</li>
+<li><strong>404 Not Found</strong> — resource that is not available.</li>
+<li><strong>405 Method Not Allowed</strong> — this method is not allowed on this URL.</li>
+<li><strong>409 Conflict</strong> — when resources are not unique, when a unique constraint is violated.</li>
+<li><strong>429 Too Many Requests</strong> — rate limit client request.</li>
+</ul>
+
+<p><strong>5xx server error</strong></p>
+<ul>
+<li><strong>500 Internal Server Error</strong> — something broken or an exception was raised which was not handled.</li>
+<li><strong>501 Not Implemented</strong> — this server does not implement that method. 405 is this method is not allowed on this URL.</li>
+<li><strong>502 Bad Gateway</strong> — usually happened by proxies and load balancers, upstream invalid response.</li>
+<li><strong>503 Service Unavailable</strong> — server is not available or too busy to handle more requests.</li>
+<li><strong>504 Gateway Timeout</strong> — the upstream server failed to respond in time. Nginx did not receive a response from the original server.</li>
+</ul>
+
+</div>
+
+<h3 id="vii-http-caching">vii. HTTP caching</h3>
+<div style="margin-left: 2em;">
+
+<p>Storing copies of responses for reuse. Reducing the need for repeated request to the server, reduces load time, bandwidth, server loads.</p>
+
+<p>The client does not need to download a lot of data and the server does not need to send a lot if the data has not changed.</p>
+
+<p>E.g. of a request response with caching:</p>
+
+<pre><code>GET /api/products HTTP/1.1
+Host: backend.com</code></pre>
+
+<p>Response:</p>
+
+<pre><code>HTTP/1.1 200 OK
+Cache-Control: max-age=10, public
+ETag: 3142
+Last-Modified: Thu 17 Sep 2026 19:09:10 GMT
+
+{
+    "name": "product1"
+}</code></pre>
+
+<p><code>Cache-Control</code> is the header that tells the client to cache the response for a period of 10s as specified by <code>max-age=10</code>. While the cache is fresh, the client does not send another request. It uses the stored copy. <code>public</code> means the response can be stored in a shared cache.</p>
+
+<p><code>ETag</code> is the hash value of the response which tells us that if the etag changed the response has also changed.</p>
+
+<p><code>Last-Modified</code> as the name implies, the last time the response was modified.</p>
+
+<p>After the cache is stale, the client may send the same request with:</p>
+
+<pre><code>GET /api/products HTTP/1.1
+Host: backend.com
+If-None-Match: 3142
+If-Modified-Since: Thu 17 Sep 2026 19:09:10 GMT</code></pre>
+
+<p>The server responds that the response has not changed:</p>
+
+<pre><code>HTTP/1.1 304 Not Modified
+Cache-Control: max-age=10, public</code></pre>
+
+<p>or it will respond with the new data, if the response has changed:</p>
+
+<pre><code>HTTP/1.1 200 OK
+Cache-Control: max-age=10, public
+ETag: 2398
+Last-Modified: Sat 19 Sep 2026 18:00:10 GMT
+
+{
+    "name": "product1 updated"
+}</code></pre>
+
+<p>Less data is sent when cached.</p>
+
+</div>
+
+<h3 id="viii-http-content-negotiation">viii. HTTP content negotiation</h3>
+<div style="margin-left: 2em;">
+
+<p>The mechanism client and server agree on the format to exchange data. Clients can indicate their preferred format and the server can respond with the format or a fallback format.</p>
+
+<pre><code>GET /products HTTP/1.1
+HOST: backend.com
+Accept-Language: es
+Accept: application/json
+Accept-Encoding: gzip, deflate, br, zstd</code></pre>
+
+<p>The server responds appropriately. In this case it responds in Spanish because of the header <code>Accept-Language: es</code>.</p>
+
+</div>
+
+<h3 id="ix-http-based-compression">ix. HTTP based compression</h3>
+<div style="margin-left: 2em;">
+
+<p>The client can tell the server which encodings it supports using <code>Accept-Encoding</code>, e.g. gzip, deflate, br, zstd.</p>
+
+<p>The server can then compress the response body and set <code>Content-Encoding</code> so the client knows how to decode it. Compression reduces bandwidth. The client does not need to download a lot of data and the server does not need to send a lot.</p>
+
+</div>
+
+<h3 id="x-handling-large-request-and-response">x. Handling large request and response</h3>
+<div style="margin-left: 2em;">
+
+<p>A JSON body is small. Images, audio, video are not.</p>
+
+<p><strong>Client to server. Multipart.</strong></p>
+
+<p><code>multipart/form-data</code> is used to send files from the client to the server. The body is split into parts. That is why it is called multipart.</p>
+
+<pre><code>POST /api/upload HTTP/1.1
+Host: backend.com
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxk
+
+------WebKitFormBoundary7MA4YWxk
+Content-Disposition: form-data; name="file"; filename="shoe.jpg"
+Content-Type: image/jpeg
+
+&lt;binary image bytes&gt;
+------WebKitFormBoundary7MA4YWxk--</code></pre>
+
+<p><strong>Server to client. Chunked stream.</strong></p>
+
+<pre><code>GET /videos/intro.mp4 HTTP/1.1
+Host: backend.com
+Accept: video/mp4
+
+HTTP/1.1 200 OK
+Content-Type: video/mp4
+Transfer-Encoding: chunked
+Connection: keep-alive
+
+&lt;chunk of video bytes&gt;
+&lt;chunk of video bytes&gt;
+...</code></pre>
+
+<p>Chunked means the file is sent in pieces. The connection stays open until the last chunk. Keep-alive means after the file, do not close the TCP connection.</p>
+
+</div>
+</div>
+
+---
+
+<h2 id="4-routing"><u>4. Routing</u></h2>
+<div style="margin-left: 2em;">
+
+<p>HTTP methods describe the intent, or what we want to do on that particular resource.</p>
+
+<p>Routing defines where, or which resource we want to perform our intention on.</p>
+
+<p>The server takes a combination of your intention and URL to map to a particular handler or some server side logic.</p>
+
+<p>E.g. combination of intent, i.e. HTTP method GET, and URL <code>/users</code> maps to a handler/controller on the server side.</p>
+
+<p>Routing is mapping a URL to server side logic.</p>
+
+<pre><code>GET /api/books HTTP/1.1
+POST /api/books HTTP/1.1</code></pre>
+
+<p>The methods and route map to a particular handler on the server side to perform some logic.</p>
+
+<h3 id="i-types-of-routing">i. Types of routing</h3>
+<div style="margin-left: 2em;">
+
+<h4 id="a-static-routes">a. Static routes</h4>
+<div style="margin-left: 2em;">
+
+<p><code>/api/books</code> — do not have a variable parameter inside the route.</p>
+
+</div>
+
+<h4 id="b-dynamic-route">b. Dynamic route</h4>
+<div style="margin-left: 2em;">
+
+<p><code>/api/books/:id</code> — have a variable inside the route. The dynamic part is called the path/route parameter.</p>
+
+</div>
+
+<h4 id="c-query-parameter">c. Query parameter</h4>
+<div style="margin-left: 2em;">
+
+<p>Different from path/URL parameter because it uses <code>?</code> and key-value to send some kind of filter in a GET request. E.g. <code>/api/search?query=:searchterm</code>.</p>
+
+</div>
+
+<h4 id="d-nested-route">d. Nested route</h4>
+<div style="margin-left: 2em;">
+
+<p><code>/api/user/:userid/books/:id</code></p>
+
+</div>
+
+<h4 id="e-route-versioning-and-deprecation">e. Route versioning and deprecation</h4>
+<div style="margin-left: 2em;">
+
+<p><code>/api/v1/products</code>, <code>/api/v2/products</code>.</p>
+
+</div>
+
+<h4 id="f-catch-all-route">f. Catch all route</h4>
+<div style="margin-left: 2em;">
+
+<p><code>/*</code> maps to a handler where the routing does not map to any handler.</p>
+
+</div>
+</div>
+</div>
+
+---
+
+<h2 id="5-serialization-and-deserialization"><u>5. Serialization and Deserialization</u></h2>
+<div style="margin-left: 2em;">
+
+<p>Clients and servers communicate via a protocol, whether HTTP, gRPC or WebSocket. How can they make sense of that data being sent and received?</p>
+
+<h3 id="i-the-language-barrier">i. The language barrier</h3>
+<div style="margin-left: 2em;">
+
+<p>There comes a language barrier problem. How does a client written in JS send data, usually a JS object, to a backend written in Java, and Java can make sense of that data or convert it to a Java class?</p>
+
+<p>The fundamental issue: how can data created in one language be transmitted over a network, be accurately understood and reconstructed in a different programming language's data type?</p>
+
+</div>
+
+<h3 id="ii-solution">ii. Solution</h3>
+<div style="margin-left: 2em;">
+
+<p>To solve this cross language data exchange problem, client and servers agree on a common format to send data that they both understand.</p>
+
+<p>Serialization and deserialization is converting data to and from a common format so that during transmission or storage, it is language agnostic. So clients and servers from different languages are able to make sense of that data.</p>
+
+</div>
+
+<h3 id="iii-the-flow">iii. The flow</h3>
+<div style="margin-left: 2em;">
+
+<pre><code>client application → serialize to agreed upon format → network infrastructure transmits over the network
+server application → receives the transmitted serialized format → deserialized into language data structure
+server does some business logic
+server application → serialize from language data structure to agreed upon format → network transmits serialized format</code></pre>
+
+</div>
+
+<h3 id="iv-osi-model">iv. OSI model</h3>
+<div style="margin-left: 2em;">
+
+<p>Standard on how computers and network devices communicate with each other.</p>
+
+<p>OSI has 7 layers: Physical Layer, Data link layer, Network layer, Transport layer, Session layer, Presentation Layer, Application layer.</p>
+
+<p>It defines how data are converted in different formats at different layers and transmitted over a network.</p>
+
+<p>As a backend engineer my responsibility starts and ends at the application layer. I define how my application data structures and objects are serialized for transmission, and how data received is deserialized in my application's native format.</p>
+
+<p>Conversion to TCP segments, IP packets, Ethernet frames and physical signals are handled by the OS and network infrastructure.</p>
+
+</div>
+
+<h3 id="v-serialization-standards">v. Serialization standards</h3>
+<div style="margin-left: 2em;">
+
+<ul>
+<li><strong>Text based serialization format:</strong> JSON, YAML, XML</li>
+<li><strong>Binary serialization format:</strong> Protocol Buffers, Avro, etc.</li>
+</ul>
+
+<p>JSON is the most popular serialization standard during client and server communication.</p>
+
+</div>
+</div>
+
+
+<!-- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Backend from principle 
 
 This is my note learning backend from first principle. First principle means understanding the core concepts that is language, framework, library agnostic. 
@@ -125,6 +817,8 @@ Now that the IP address is found, there has to be a connection before the client
 There are various ways clients and servers communicate and one of the most common is a protocol called HTTP HyperText Transfer Protocol. 
 
 
+HTTP protocol
+
 It is a standardized way of communication between clients and servers. HTTP uses TCP as its underlying protocol for client server connection because before any communication has to take place, a connection has to be established.
 
 
@@ -132,13 +826,10 @@ Core ideas in HTTP
 
 HTTP has 2 main ideas at its heart. 
 
-1. Statelessness: When a client and server are communicating, that is sending messages in the form of HTTP requests and receiving a response back from the server as an HTTP response, servers do not remember past requests the client sent or responded to, hence the client has to send all the necessary information in the request to get the desired response. 
+1. Statelessness: When a client and server are communicating, through HTTP request and response, servers do not any client session data, so do not remember past requests, hence the client has to send all the necessary information in the request to get the desired response. 
 
 eg Client sends login credentials in a request and receives a response of successful login. 
 Subsequent requests after that, if the client does not send the necessary information in the form of a cookie or token, the server will not remember that the client is logged in.
-
-Stateless servers need no per-client memory. Requests can hit any machine.
-
 
 
 2. Client server model: With HTTP Protocol the client always initiates the communication. Servers do not initiate communications
@@ -152,10 +843,9 @@ HTTP/1.0: The TCP connection is closed after every request response cycle. Leadi
 
 HTTP/1.1: The same TCP connection can be used to send multiple requests and receive multiple responses. 
 
-HTTP/2: Multiplexing. HTTP/1.1 had an issue called head of line blocking where until the 
-initial request has been responded to, all the current requests will have to wait. HTTP/2 sends many requests on the same TCP connection so one slow response does not block the others at the HTTP layer.
+HTTP/2: Multiplexing. HTTP/1.1 had an issue called head of line blocking where until the initial request has been responded to, all the current requests will have to wait. HTTP/2 sends many requests on the same TCP connection so one slow response does not block the others at the HTTP layer.
 
-HTTP/3: HTTP/2 still has TCP-level head of line blocking. HTTP/3 uses QUIC over UDP as its underlying protocol for communication. 
+HTTP/3: uses QUIC over UDP as its underlying protocol for communication. 
 
 HTTP/1.1 is still widely used today. 
 
@@ -188,7 +878,11 @@ Content-Length: 50
 
 
 HTTP Methods
-HTTP methods are verbs which show the action the client wants the server to perform on a particular resource
+HTTP methods are verbs which show the action the client wants the server to perform on a particular resource.
+
+Http messages show clients intent on a particular resource.
+
+there are number of http method and the most used ones are as follows 
 
 GET - get a resource from the server
 POST - create a resource on the server
@@ -208,8 +902,8 @@ Non idempotent
     Non idempotent method POST
 
 
-HTTP status codes 
-Quickly communicate the result of a request in a standardized way. Standardized means consistency between how a server should communicate the results of the request. There should not be a case where the status code is telling a different msg from the body. 
+HTTP response codes 
+Quickly communicate the result of a request in a standardized way. Standardized means consistency between how a server should communicate the results of the request. There should not be a case where the status code is telling a different messsage from the body. 
 
 This standard is what our servers should follow. 
 
@@ -223,13 +917,14 @@ This standard is what our servers should follow.
 used for information to the clients. 
 Can be used in a situation where the request is huge when the headers are sent before the body so 
 
-100 Continue - in a situation where the request is huge and the headers are sent before the body so 100 indicates headers received, continue with the body
+100 Continue - in a situation where the request is huge and the headers are sent before the body so 100 indicates headers received, contining with the body
 
-101 Switching Protocol - Where the communication protocol for the url has changed from HTTP to websocket. 
+101 Switching Protocol - Where the communication protocol for the url has changed eg from HTTP to websocket. 
 
 
 2xx - success response
-200 OK - request was successful and server sending requested resources or performing the requested action
+200 OK - request was successful and server sent requested resources or performing the requested action
+
 201 CREATED - successful creating a new resource
 204 NO CONTENT - successful but no content
 
@@ -244,7 +939,7 @@ Can be used in a situation where the request is huge when the headers are sent b
 403 FORBIDDEN - refused to authorize the request
 404 NOT FOUND - resource that is not available
 405 METHOD NOT ALLOWED - this method is not allowed on this URL
-409 CONFLICT - when resources are not unique 
+409 CONFLICT - when resources are not unique. when a unique constraint is violated
 429 TOO MANY REQUEST - rate limit client request
 
 
@@ -259,9 +954,12 @@ Can be used in a situation where the request is huge when the headers are sent b
 
 HTTP headers 
 Are metadata which are key value pairs of an HTTP message. they provide certain information about the HTTP message like the content-type, date of the message 
-security features. When sending a package think of HTTP headers as the info that is pasted on the package like where the package is going to etc.
+security features. 
 
-categories of headers 
+why headers 
+When sending a package think of HTTP headers as the info that is pasted on the package like where the package is going to etc so other do not have to open the package to view it's content.
+
+types of headers 
 request headers - used to understand client env, preference and capabilities- eg User-Agent, Authorization, Accept, Cookie etc
 
 general header - general info about the HTTP message - eg Date, Cache-Control, Connection etc.
@@ -271,7 +969,7 @@ representation header - info about the HTTP message's body ensure client, server
 security headers - enhance the security of the http request/response- eg Strict-Transport-Security(HSTS), Content-Security-Policy(CSP), Set-Cookie
 
 
-Importance of HTTP header
+Benefits of HTTP header
 
 Extensible: HTTP header makes HTTP extensible because it gives room to easily add custom headers for new features or security enhance without altering the underlying protocol
 
@@ -303,13 +1001,16 @@ Last-Modified: Thu 17 Sep 2026 19:09:10 GMT
 
 Cache-Control is the header that tells the client to cache the response for a period of 10s as specified by max-age=10.
 While the cache is fresh, the client does not send another request. It uses the stored copy.
+public means the response can be stored in a shared cache 
+
+
 
 ETag is the hash value of the response which tells us that if the etag changed the response has also changed
 
 Last-Modified as the name implies, the last time the response was modified
 
 
-After the cache is stale, the client may send the same request with validators
+After the cache is stale, the client may send the same request with
 
 GET /api/products HTTP/1.1
 Host: backend.com
@@ -1030,15 +1731,26 @@ and how once we can get out of 99% of vulnerabilities
 Content security policies 
     http header sent by server to browser
 
+routing 
+types of routes
 
 
-Routing 
+
+
+4. Routing 
 
     Http methods describes the intent or what we want to do on that particular resource
 
-    routing define where or which or the resources do we want to perform our intent on .
+    Routing define where or wwhich resource we want to perform our intention on. 
+
+    The server takes a combination of your intention and url to map to a particular handler or some server side logic
+    eg 
+
+    Combination of intent ie HTTP method eg GET, and url /users maps to a handler/controller on the server side
 
     routing is mapping a url parameter to a server side logic 
+
+
 
     GET /api/books HTTP/1.1
     POST /api/books HTTP/1.1 
@@ -1050,7 +1762,108 @@ Routing
 
         2. Dynamic route /api/books/:id have a variable inside the route. The dynamic part is called the path/route parameter
 
-        3. Query parameter /api/search?query=:searchterm
+        3. Query parameter different from path/url parameter because it uses ? and key-value 
+        to send some kind of filter in a get request.  /api/search?query=:searchterm 
+
+        4. Nested route /api/user/:userid/books/:id
+
+        5. route versioning and depreciation /api/v1/products, /api/v2/products. 
+
+        6. catch all route: /* maps handler where the routing do not map to any handler.
+
+
+
+5. Serialization and Deserialization
+
+
+
+
+Clients and server commnunicates via a protocol, whether http, grpc or websocket. 
+How can they make sense of that data being sent and recieved. 
+
+There comes a language barrier problem. How does a client written in js sends data usually a js object to a bakend write in java
+and java can make sense of that data or convert it to a java class. 
+
+foundamental issue  how can data created in one language be transmitted over a network, be accurately 
+understood and reconstructed in a different programming languages data type. 
+
+solution 
+    To solve this cross language data exchange problem. Client and servers agrees on a common format to send data
+    that they both understand.
+
+Serialization and deserialization is converting data to and from a common format so that during transmission or storage, 
+it is language agnostic. so client and servers from different languages are able to make sense of that data. 
+
+
+Hence the flow 
+    client application -> serialize to agreed upon format -> network infrastructure transmits over the network
+    server application -> recieves the transmitted serialized format -> deserialized into language data structure, 
+    server does some business logic 
+    server application -> serialize from language data structure  to agreed upon format -> network transmitted serialized format
+
+
+OSI model 
+Standard on how computer and network devices communicate with each other. 
+
+OSI has 7 layers
+
+Physical Layer, Data link layer, Network layer, Transport layer, Session layer, Presentation Layer, Application layer
+It defines how data are converted in different format at different layers and transmitted over a network.
+As a backend engineer my responsible starts and end at the application layer. 
+I define how my application data strucuture and objects are serialized for transmission and how data recieved at deserialized 
+in my application native format. 
+
+Conversion to TCP segements, IP packets, Ethernet frames and physical signals are handled by the OS and network infrastructure
+
+
+serialization standards 
+
+text based serialization format, json, yaml, xml 
+binary serialization format : protocol buffers, avro etc
+
+JSON is most popular serialization standard during client and server communication
+
+
+
+
+
+
+
+
+
+How does a client being a js application for example in the browser and a server a java app makes 
+sense of the http request and response
+
+eg js app sends a js object in the request body. how does the server make sense of the request 
+body in its own data type. 
+
+osi model 
+    high level understanding 
+    top level application layer
+    bottom physical layer. 
+
+problem is two machine in different 
+sent data to another machine in a way which is language agnostic
+
+common standard client should send data in a particular standard / format and also be able convert from 
+that format
+
+server should also be able to convert from that standard
+common standard that both client and server agrees to send and recieve data.
+
+
+
+alot of serialization standards.
+most popular is json, yaml, xml. text based serialization
+binary format protocol, avro etc 
+
+
+
+reference article 
+
+serialization and deserialization
+https://markstack-app.vercel.app/blogs/serialization-and-deserialization-data-flow-between-clients-and-servers
+https://medium.com/@ali.gelenler/serialization-deserialization-mechanisms-7cc37b6d948b
 
 
 
@@ -1555,3 +2368,340 @@ summarize
 
 
 
+Rest API Design
+
+    Tim berners lee - invented www in 1990
+    not accounted scalability
+    Roy Fielding, introduced 6 constraints to solve scalability
+    together http/1.1
+    Fielding names constraints as REST architectural standards in 2000
+    Idempotency
+        POST non idempotent method
+    if we have a non crud operation or an operation where u can't determine the method to use
+    POST    custom actions any thing that is not a crud operation 
+    rest api specification.
+
+    reason for following standards
+        - limit confusion and assumptions 
+            eg delete method for fetching resource using ur services, less bugs and confusions
+
+    Things to do when design apis
+        1. Start from ui design, to have an idea how user are going interact with data
+        2. The resources, nouns from the ui client requirements etc
+        3. Database schema
+        4. API interface design
+
+    list api 
+        pagination, filtering, sorting
+
+
+    
+
+
+
+
+
+    Tim Berners Lee started a project called www to share information with the whole world
+    within a year he invented uri, http, html, web sever, web browser, wysiwg. 
+
+    Within a short there was expotential growth and he did not account for this scale.
+    To accomodate this large user based new technique and standards has to be introduced 
+
+    Roy Fielding was consence about the web scaling problems, to address the issue he proposed a
+    couple of constraints 
+    1. Client Server - seperate of concern between client and server. client handles user experience, while server
+        handles data storage and business logic. 
+        allow each component to evolve indepenedently improve scala
+
+    2. Uniform interface
+        a standard way of web components to communicate with each other. 
+        consistent interface across all services 
+
+    3. Layered system 
+        architecture composed of hierarchical layer and each layer can only see and interact with 
+        the layer below it. scalable , security, ability to add intermediate components , like load balancers 
+        and proxy servers.
+
+    4. Cache 
+        Server should label resources as cacheable or not by the client. leads reduce server load, improve network efficency
+        , improve user 
+
+    5. stateless - each request from the client must contain all the necessary information to process the request
+
+    6. Code on demand (optional) - server extends clients function by transfering code to the client like js
+
+
+
+
+Designing APIs 
+    different ways of design apis graphql, grpc etc
+    Rest api is the common standard of designing apis
+
+    Developers have many questions when writing, if they are stick to the standards , what methods to use for custom actions
+    that are not crud, should they use plural or singular for resource names, 
+    worrying about whether their api is restful or not. 
+
+    A little history 
+
+    1990 Tim Berners Lee started a project called the worldwide web (www) to share knowledge with the whole
+        within are invented URI, HTTP Protocol, HTML, webserver, html editor in browser, wysiwyg
+
+        the project was ending breakdown because of the expotential growth of user, it did not account for scale.
+
+    1993 Roy Fieldings introduced to some 6 constraints help with scale of the web
+
+        1. Client server - model seperate of concerns clients handles user experience, server handles data storage and business logic
+                allowing each component to scale independently
+
+        2. Uniform interface - standardized way of different components communicating with each other. 
+
+        3. Layered system - the architecture consists of hierarchical layers and each layer interact with the layer below
+                allows scalability and security and ability to add intermediate layers like 
+                load balancers, proxies etc. 
+
+        4. Cacheable - responses from server should be explicitly labeled as cacheable or not. Client will the cache the reponse to reduce server loads , improve network efficency, enhance user experience by providing faster response
+
+        5. Statelessness - client should add all the necessary information in the request to a server for the server to process all the necessary information. server does not store any client context between require. 
+
+        improve scalability since any server can handle client requests.
+
+        6. Code on demand it is optinal, server can extend clients functionality by transferring executable codes to client.
+
+    What does REST means
+        The name REST stands for Representational State Transfer
+            Web resources can be represented in different formats depending on the client or server
+            eg. Your profile information stored in a db table as a column can be representated in json, html , xml 
+            depending on the client and server
+
+            State current condition of the resource that is the actual data stored in a db. The current information
+            ur profile stored in db. 
+
+            when a request is made for the profile, the server does not send raw object but sends a representation 
+            of the state in a specific format like json, xml
+
+            transfer movement of that state in a representational format between clients and servers
+            using a http protocol.
+
+
+        Rest is an architectural style where one resource is particular condition can be transferred in different formats using an
+        underlying protocol http between clients and servers. 
+
+        eg. server store my current profile info in a database, and sends it to a client in a different format like json, html
+        xml instead of the db table object using the underlying http protocol
+
+        clients can send the update info of my profile original in js object as a different format like json to the server using http
+
+        and the follow the 6 specific constraints to make the system more scalable. 
+
+    Idempotency 
+        perform same actions multiple times has the same effect as performing it once. 
+        does not matter how many times you retry the same request, it will have the same effect on the resource
+
+        get, post, patch, put, delete others head, options
+
+        POST 
+            is non idempotent 
+            open end rest api makes the post method open end, meaning whenever we have an action that is not 
+            a crud , we can put it under post 
+
+
+Why follow standards like rest api standards 
+
+    eliminate confusion and assumption in our workflow 
+        if ur api use delete for post operations it leaves more for error and confusion
+
+
+Things to do when developing api
+
+    1. Start from ui design, to have an idea how user are going interact with your data
+    2. Identify resources, nouns from the ui client requirements etc
+    3. Database schema
+    4. API interface design
+
+        design the interface first, not the business logic
+        resources are lowercase plural in the path
+        list and create share the same url, method is what differs
+            GET /organizations   list   200
+            POST /organizations  create 201, return the new entity
+
+
+        list apis supports
+            pagination  query params page and limit
+            sorting     sortBy and sortOrder
+            filtering   query params named after fields e.g. status=archived
+
+        get / update / delete a single resource share the same path, method differs
+            GET    /organizations/:id  200
+            PATCH  /organizations/:id  200, return updated entity
+            DELETE /organizations/:id  204 empty body
+            prefer PATCH over PUT, we usually send partial fields not a full replace
+
+        404 vs empty list
+            404 only when client asks for a specific id that does not exist
+            list with no matches is still 200 with empty array, never 404
+
+        custom actions are not crud
+            archive org, clone project etc
+            even if it updates a field, extra server work (delete related data, emails) makes it a custom action
+            POST /organizations/:id/archive
+            POST /projects/:id/clone
+            status code follows what actually happened, not the method
+            archive can be 200, clone can be 201 if a new resource was created
+
+        same patterns for every resource (org, project, task)
+        json fields camelCase
+        keep names consistent across resources, description not dsc
+        same route style everywhere, always plural
+
+        after design
+            1. interactive docs like swagger
+            2. keep routes, payloads, query params consistent and intuitive
+            3. provide sane defaults (page, limit, sort, status=active on create)
+            4. no abbreviations in field names
+
+
+
+
+
+
+
+
+
+
+url structure
+    https://michael.com/blogs
+
+    https - scheme
+    michael.com - domain
+    api.michael.com - supdomain
+    /blogs - resources
+
+  
+
+
+FULL TRANSCRIPT
+
+    API design is something you will spend a lot of time on as a backend engineer.
+    The problem is people still get confused: should the path be plural or singular,
+    should update be PATCH or PUT, which method for a custom action, which status code.
+    The standards already exist. The purpose is to extract rules from them and stick to
+    one consistent styling so we can focus on business logic instead of worrying whether
+    the API is RESTful.
+
+    History
+        Around 1990 Tim Berners-Lee started the World Wide Web to share knowledge.
+        He invented URI, HTTP, HTML, the first web server, the first browser, and the first WYSIWYG editor.
+        The web grew faster than it was designed for, so it needed new techniques to scale.
+
+        Roy Fielding proposed constraints that later became REST:
+            client-server     UI on the client, data and business logic on the server, they evolve independently
+            uniform interface a standardized way for components to communicate
+            layered system    each layer only talks to the layer below it, so you can add proxies and load balancers
+            cacheable         the server must label responses as cacheable or not
+            stateless         each request contains all the information the server needs; the server does not remember the previous request
+            code on demand    optional; the server can send executable code like JavaScript to the client
+
+        Together they wrote HTTP 1.1. In 2000 Fielding named this architectural style REST: Representational State Transfer.
+
+    What REST means
+        Representational    resources are represented in a format: JSON, XML, HTML, depending on the client
+        State               the current attributes of a resource, for example a cart's items, quantities, and total
+        Transfer            those representations move between client and server over HTTP
+
+    URL
+        scheme (https) + domain / subdomain (api.example.com) + version (/v1) + resource path + query params
+        In the path the resource should always be plural. Even when fetching one book it is /books/:id, not /book/:id.
+        Do not put spaces or underscores in URLs. For slugs: make it lowercase and replace spaces with hyphens.
+        A forward slash means a hierarchical relationship: a collection, then one item from that collection.
+
+    Idempotency
+        Performing the same action multiple times has the same effect as performing it once.
+        The side effect on the server stays the same. We are talking about the side effect you cause, not someone else changing data in between.
+
+        GET is idempotent. It is a fetch. You do not change server state.
+        PATCH and PUT are idempotent. Sending the same payload again leaves the resource in the same state.
+        DELETE is idempotent. The first call deletes it. Later calls may return 404, but they cause no further side effect.
+        POST is non-idempotent. Each call can create a new resource with a new id.
+
+        PATCH updates part of a resource. PUT replaces the whole representation.
+        Internally people mix them. For a public API stick to the semantic standard.
+        In single page applications we usually send partial JSON fields, so PATCH is the usual update.
+
+        POST is also open-ended. If an action is not create, read, update, or delete, put it under POST.
+        Send email is a custom action. It is not a fetch, not a create, not an update, not a delete. Use POST.
+
+    Why follow standards
+        If you do not follow standards, consumers have to read your code or try methods until something works.
+        That is a lot of room for error and assumption.
+        If you follow the standard, most behavior is already known. Integration is faster. Fewer bugs. Less guesswork.
+
+    How to start designing the interface
+        The first thing, before you write any business logic, is designing the interface.
+        It should be intuitive, delightful to use, not vague, and it should follow REST standards.
+        We are designing the interface point, not the execution point. No programming language, no database code yet.
+
+        Start from the UI design, Figma or wireframes, so you see how the end user interacts with data.
+        Resources are nouns you can identify from the requirements: projects, users, organizations, tasks, tags.
+        Then database schema, then API interface design.
+        List the actions from CRUD: fetch all, get one, create, update, delete. Then design those in Insomnia.
+
+    CRUD
+        List and create share the same URL. The server differentiates by method. GET lists. POST creates.
+        Path is lowercase plural: /organizations
+        Usually APIs have versioning, /v1, but this demo skips it.
+        Client payload excludes server-handled fields: id, createdAt, updatedAt.
+        POST create returns 201 and the newly created entity.
+        GET list returns 200.
+
+        Pagination
+            Do not return every row. Return a portion of the data.
+            Serializing a thousand records is heavy. The user only sees 10 or 20 at a time.
+            Response has data, total, page, totalPages.
+            Query params: limit and page.
+            If the client sends nothing, the server should set defaults: page 1, limit 10 or 20.
+
+        Sorting
+            sortBy and sortOrder.
+            If you do not sort, each call can return a random order because the database does not store rows in sequence.
+            Default sort is createdAt descending, the latest entries. If sortOrder is omitted, default descending.
+
+        Filtering
+            Query params named after fields, for example status=archived.
+
+        Get one, update, and delete share the same route: /organizations/:id. Only the method differs.
+        Update is PATCH. Returns 200 and the updated entity.
+        GET one returns 200.
+        DELETE returns 204 No Content, empty body. Successful, but there is no content to send.
+
+        404 is when the client requests a particular resource id that does not exist.
+        A list with no data is still 200 with an empty array. Never send 404 on a list call.
+
+    Custom actions
+        Archiving is not just PATCHing the status field.
+        The server may delete related projects and tasks, send emails, etc.
+        That is a custom action: POST /organizations/:id/archive
+        Do not assume every POST returns 201. Custom actions that did not create a resource return 200.
+
+        Clone is a custom action too: POST /projects/:id/clone
+        You cannot fake clone with create, because the server may also clone tasks and send email.
+        If clone creates a new resource, it can return 201.
+        Status code follows what happened on the server, not the method name.
+
+        JSON fields should always follow camelCase, in payloads and in responses.
+
+    Consistency
+        Across resources, query parameters and JSON payloads should look similar.
+        If create organization uses description, create project should also use description, not dsc.
+        Clients assume the next API works like the first one they integrated. Do not make them guess.
+        Same for routes. If organizations is plural, projects should be plural, not project.
+        Stick to the style. Do not make arbitrary decisions across different resources.
+
+    Closing
+        Provide interactive documentation, Swagger / OpenAPI, from the start. Use it to test and as docs.
+        Make APIs intuitive and consistent. Follow REST. If you cannot, follow something and stick to it.
+        Provide sane defaults: page, limit, sort, and on create only require what you absolutely need.
+        If status is omitted, default to active. That is a safe assumption.
+        Avoid abbreviations. You have more context than the people integrating the API. Keep fields readable.
+
+        A REST API is designed first. It is not coded right away.
+        Dedicate a separate session to designing the interface without thinking about programming language.
