@@ -43,6 +43,56 @@
     iv. [OSI model](#iv-osi-model)
     v. [Serialization standards](#v-serialization-standards)
 
+6. [Authentication and Authorization](#6-authentication-and-authorization)
+    i. [Who are you and what can you do?](#i-who-are-you-and-what-can-you-do)
+    ii. [Digital Authentication History](#ii-digital-authentication-history)
+        a. [CTSS and passwords](#a-ctss-and-passwords)
+        b. [Hashing](#b-hashing)
+        c. [Asymmetric cryptography (PKI)](#c-asymmetric-cryptography-pki)
+        d. [MFA](#d-mfa)
+        e. [20th century frameworks](#e-20th-century-frameworks)
+    iii. [Session, JWT, Cookie](#iii-session-jwt-cookie)
+        a. [Session](#a-session)
+        b. [JWT](#b-jwt)
+        c. [Cookies](#c-cookies)
+    iv. [Types of Authentication methods](#iv-types-of-authentication-methods)
+        a. [Stateful Authentication](#a-stateful-authentication)
+        b. [Stateless Authentication](#b-stateless-authentication)
+        c. [API Keys](#c-api-keys)
+        d. [OAuth and OpenID Connect](#d-oauth-and-openid-connect)
+            i. [Access delegation problem](#i-access-delegation-problem)
+            ii. [OAuth 1.0](#ii-oauth-10)
+            iii. [OAuth 2.0](#iii-oauth-20)
+            iv. [OpenID Connect](#iv-openid-connect)
+    v. [When to use which type](#v-when-to-use-which-type)
+    vi. [Authorization](#vi-authorization)
+        a. [RBAC](#a-rbac)
+    vii. [Security to be aware of](#vii-security-to-be-aware-of)
+        a. [Error messages](#a-error-messages)
+        b. [Timing attacks](#b-timing-attacks)
+
+7. [Validation and Transformation](#7-validation-and-transformation)
+    i. [Data integrity and security](#i-data-integrity-and-security)
+    ii. [Typical backend flow](#ii-typical-backend-flow)
+    iii. [Types of validation](#iii-types-of-validation)
+        a. [Type validation](#a-type-validation)
+        b. [Syntactic validation](#b-syntactic-validation)
+        c. [Semantic validation](#c-semantic-validation)
+    iv. [Transformation](#iv-transformation)
+    v. [Frontend vs backend validation](#v-frontend-vs-backend-validation)
+    vi. [Why we need validation and transformation](#vi-why-we-need-validation-and-transformation)
+8. [Controller, services, repository, middleware and request context](#8-controller-services-repository-middleware-and-request-context)
+    i. [Request lifecycle in the server](#i-request-lifecycle-in-the-server)
+    ii. [Controller](#ii-controller)
+    iii. [Service](#iii-service)
+    iv. [Repository](#iv-repository)
+    v. [Middleware](#v-middleware)
+        a. [Inputs of middlewares](#a-inputs-of-middlewares)
+        b. [Why middleware](#b-why-middleware)
+        c. [Common use cases](#c-common-use-cases)
+    vi. [Request context](#vi-request-context)
+    vii. [Why the various components](#vii-why-the-various-components)
+
 ---
 
 <h2 id="1-introduction"><u>1. Introduction</u></h2>
@@ -659,6 +709,629 @@ server application → serialize from language data structure to agreed upon for
 </ul>
 
 <p>JSON is the most popular serialization standard during client and server communication.</p>
+
+</div>
+</div>
+
+---
+
+<h2 id="6-authentication-and-authorization"><u>6. Authentication and Authorization</u></h2>
+<div style="margin-left: 2em;">
+
+<h3 id="i-who-are-you-and-what-can-you-do">i. Who are you and what can you do?</h3>
+<div style="margin-left: 2em;">
+
+<p>Authentication and authorization ask the questions: who are you, and what can you do? In a given context: platform, OS.</p>
+
+</div>
+
+<h3 id="ii-digital-authentication-history">ii. Digital Authentication History</h3>
+<div style="margin-left: 2em;">
+
+<h4 id="a-ctss-and-passwords">a. CTSS and passwords</h4>
+<div style="margin-left: 2em;">
+
+<p>Beginning of password usage: CTSS.</p>
+
+<p>In the early digital era where mainframes were the common computers, researchers at MIT wanted a multiple user system of the computer without sharing users' personal files and data, hence the birth of CTSS.</p>
+
+<p><strong>1960s Compatible Time Sharing System (CTSS)</strong></p>
+
+<p>CTSS was an operating system in the mainframes era that introduced the concept of password for multiple users of the mainframes. The idea was multiple users can use the same mainframe computer without sharing user data and files. Hence a user will have a username and password.</p>
+
+<p><strong>Problem with CTSS</strong></p>
+
+<p>CTSS stored password in plain text and an individual was able to print the password files in plain text, exposing a huge security vulnerability. This made researchers think about secure password storage.</p>
+
+</div>
+
+<h4 id="b-hashing">b. Hashing</h4>
+<div style="margin-left: 2em;">
+
+<p>Hashing is a technique used to prevent storing password in plain text. A password is passed through a cryptographically secure function and the output is a fixed length hashed string. The hashed string is stored instead, and the amazing thing about hashing was it was one way.</p>
+
+<p>You can't get the original password from rehashing the hashed password. It was irreversible.</p>
+
+<p>Password hashing is still used today.</p>
+
+</div>
+
+<h4 id="c-asymmetric-cryptography-pki">c. Asymmetric cryptography (PKI)</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>1970s</strong> explosion in cryptography research invented Diffie-Hellman key exchange. Diffie-Hellman introduced the concept of asymmetric cryptography or public key infrastructure.</p>
+
+<p>Asymmetric cryptography enables two parties to establish a shared secret over an untrusted medium. This technique becomes the backend of modern auth protocols.</p>
+
+</div>
+
+<h4 id="d-mfa">d. MFA</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>1990s</strong> there was a need for a secure authentication solution because username and password was not enough against brute force attacks. Introducing Multi Factor Authentication (MFA).</p>
+
+<p>MFA combines 3 things:</p>
+
+<ol>
+<li>Something you know, e.g. password, pin</li>
+<li>Something you have, e.g. a card, OTP generators</li>
+<li>Something you are, e.g. fingerprint, retina, iris</li>
+</ol>
+
+</div>
+
+<h4 id="e-20th-century-frameworks">e. 20th century frameworks</h4>
+<div style="margin-left: 2em;">
+
+<p>The rise of cloud computing, mobile devices, API based architecture etc. demanded advanced authentication frameworks such as JWTs, OAuth2, Zero Trust, passwordless.</p>
+
+</div>
+</div>
+
+<h3 id="iii-session-jwt-cookie">iii. Session, JWT, Cookie</h3>
+<div style="margin-left: 2em;">
+
+<h4 id="a-session">a. Session</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>HTTP statelessness issue</strong></p>
+
+<p>As the web evolved there was a need for dynamic contents or dynamic web applications which require the server having some form of memory of our interactions.</p>
+
+<p>But HTTP, the protocol used for communication between clients and servers, is stateless, meaning the server treats every request in isolation and does not hold memory or store data of past requests. Hence sessions.</p>
+
+<p>Session was a technique to bring some form of state into the web so servers can hold memory of the user signing in, and that this user is the one requesting this resource.</p>
+
+<p><strong>How session works</strong></p>
+
+<ul>
+<li>User visits a platform and provides their credentials (username and password)</li>
+<li>The client (browser, mobile app etc.) sends that information to the server</li>
+<li>Server validates the credentials (username exists, password matches etc.)</li>
+<li>Server creates a unique session id and stores session id with some user information like user id, username etc. in a persistence store like Redis, or a database, with expiry time</li>
+<li>Sends the session id to the client as a cookie</li>
+<li>The cookie is stored in the user browser</li>
+<li>Browser by default sends cookie on every subsequent request</li>
+<li>Server receives session id from cookie, queries persistence store for session validity and grants user access</li>
+<li>Session ids in the DB are short lived and the server recreates a new one when it expires</li>
+</ul>
+
+</div>
+
+<h4 id="b-jwt">b. JWT</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>Sessions become a bottleneck</strong></p>
+
+<p>As web applications become more distributed globally, sessions become a bottleneck because of two machine reasons:</p>
+
+<ol>
+<li><strong>Memory cost</strong> — storing millions and billions of user session data in persistent storage for large applications becomes very costly.</li>
+<li><strong>Replication latency</strong> — replicating session data across an application's multiple persistent stores introduces latency.</li>
+</ol>
+
+<p>These scalability issues birthed the creation of JWT.</p>
+
+<p>JWT is a stateless mechanism for transferring user data across different parties. It is a self contained token with user data which requires no DB lookup for authentication.</p>
+
+<p>The JWT string has 3 parts:</p>
+
+<pre><code>&lt;header&gt;.&lt;payload&gt;.&lt;signature&gt;</code></pre>
+
+<ul>
+<li><strong>Header</strong> contains token metadata, e.g. algorithm used to sign the token.</li>
+<li><strong>Payload</strong> contains user data, e.g. <code>sub</code> stores user id, <code>iat</code> when the token was issued, and other optional fields.</li>
+<li><strong>Signature</strong> used to verify whether the token has been tampered with and also to verify if it was issued from us or the right sources.</li>
+</ul>
+
+<p><strong>How JWT works</strong></p>
+
+<ul>
+<li>User visits a platform and provides their credentials (username and password)</li>
+<li>The client (browser, mobile app etc.) sends those credentials to the server</li>
+<li>Server validates the credentials (username exists, password matches etc.)</li>
+<li>Server creates a JWT token and signs it with a secret key</li>
+<li>Sends the JWT token to the client, usually access token and refresh token</li>
+<li>Client stores it in memory or cookie and sends it back in the HTTP request header</li>
+<li>Server verifies signature and grants the user access</li>
+<li>Server does no DB lookup. All it needs is self contained in the payload: user info and expiry time</li>
+</ul>
+
+<p><strong>Pros of JWT</strong></p>
+
+<ol>
+<li>Saves a lot of storage cost</li>
+<li>Scalability — efficient in scalable systems</li>
+<li>Portable — easy to transport</li>
+</ol>
+
+<p><strong>Cons of JWT</strong></p>
+
+<p>Revocation issues. It is hard to revoke access to a token unless the token expires.</p>
+
+<p>In the case where a user reports an impersonation issue it is hard to revoke access. Changing the signing secret will cause every other user token to invalidate and requires login.</p>
+
+<p><strong>Workaround JWT issues</strong></p>
+
+<ol>
+<li><strong>Blacklist</strong> — have a table and put the JWT token in a blacklist. But this defeats the purpose of JWT to be scalable and avoid DB storage and lookups for every request. If doing a DB lookup to check all tokens in the blacklist, why not use session, which is classified as more secure?</li>
+<li><strong>Short lived access token</strong> — the shorter the expiry, the less access the malicious user has.</li>
+</ol>
+
+</div>
+
+<h4 id="c-cookies">c. Cookies</h4>
+<div style="margin-left: 2em;">
+
+<p>A cookie is a way of storing a piece of information in a user's browser. With the help of cookies, the server can store some piece of information in the client's browser. Sent on every subsequent request.</p>
+
+</div>
+</div>
+
+<h3 id="iv-types-of-authentication-methods">iv. Types of Authentication methods</h3>
+<div style="margin-left: 2em;">
+
+<h4 id="a-stateful-authentication">a. Stateful Authentication</h4>
+<div style="margin-left: 2em;">
+
+<p>Stateful authentication is session based authentication and it entails everything discussed above.</p>
+
+<p><strong>How it works</strong></p>
+
+<ul>
+<li>Client sends username and password</li>
+<li>Server checks validity and generates a session id and user data in Redis or DB</li>
+<li>Sends session id back to client in a cookie</li>
+<li>Because of the nature of cookies, all requests after will have the cookie with session id present</li>
+</ul>
+
+<p><strong>Pros</strong></p>
+
+<ul>
+<li>Centralized control of all sessions</li>
+<li>Easily revoke session</li>
+</ul>
+
+<p><strong>Challenges</strong></p>
+
+<ul>
+<li>Scalability issues</li>
+<li>Operating complexity with distributed systems and replication</li>
+</ul>
+
+</div>
+
+<h4 id="b-stateless-authentication">b. Stateless Authentication</h4>
+<div style="margin-left: 2em;">
+
+<p>JWT based authentication and entails everything discussed above.</p>
+
+<p><strong>How it works</strong></p>
+
+<ul>
+<li>Client sends username and password</li>
+<li>Server checks the validity</li>
+<li>Server generates a signed JWT token with a secret key with user info (id, name, role etc.)</li>
+<li>Sends it back to the client in the Authorization header</li>
+<li>Client sends the token in the request header for subsequent requests</li>
+<li>Server extracts token and tries to verify with secret key</li>
+</ul>
+
+<p><strong>Pros</strong></p>
+
+<ul>
+<li>Scalability</li>
+<li>Ideal for distributed architecture and mobile friendly applications</li>
+</ul>
+
+<p><strong>Cons</strong></p>
+
+<ul>
+<li>Token revoking is complex</li>
+</ul>
+
+</div>
+
+<h4 id="c-api-keys">c. API Keys</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>How it works</strong></p>
+
+<ul>
+<li>Go to a platform interface</li>
+<li>Generate API key, and get a cryptographically random secure string</li>
+<li>This string is used to gain access to server resources</li>
+</ul>
+
+<p><strong>Why</strong></p>
+
+<p>When we need programmatic access to restricted server resources. Ideal for machine to machine communication.</p>
+
+</div>
+
+<h4 id="d-oauth-and-openid-connect">d. OAuth and OpenID Connect</h4>
+<div style="margin-left: 2em;">
+
+<h5 id="i-access-delegation-problem">i. Access delegation problem</h5>
+<div style="margin-left: 2em;">
+
+<p>As the web evolves one platform might need resources of a user in a different platform. E.g. a photo editing app might need user's Google photos for editing, a hosting platform needs access to a GitHub repository to build and deploy the code.</p>
+
+<p>In the initial stages, users had to share their credentials to these platforms so they can access their resources. This poses a security threat as these platforms have complete access to the user's account and access information they need not.</p>
+
+<p>The more platforms you visit, the more credentials you create and maintain. Even if you do not forget your password, you may use the same password for all platforms. A security breach in one platform compromises all the other accounts. It is impossible to revoke access without changing password everywhere.</p>
+
+<p>Hence the birth of Open Authorization (OAuth). Engineers at Twitter tried this delegation problem where instead of sharing username and password, tokens with limited permission are shared.</p>
+
+</div>
+
+<h5 id="ii-oauth-10">ii. OAuth 1.0</h5>
+<div style="margin-left: 2em;">
+
+<p>New app wants access to old app resources.</p>
+
+<ul>
+<li>New app sends request to old app to achieve user resource</li>
+<li>Old app sends a temporary request token</li>
+<li>New app redirects user to old app to login and grant access to certain permissions</li>
+<li>Once approved, new app sends the request token to old app for access token</li>
+<li>Now new app accesses user resources from old app without the user sharing the credentials</li>
+</ul>
+
+<p><strong>Limitations of OAuth 1.0</strong></p>
+
+<ol>
+<li>Complex to implement. Developers found it difficult to implement.</li>
+<li>Cryptographically sign every request and was error prone.</li>
+</ol>
+
+</div>
+
+<h5 id="iii-oauth-20">iii. OAuth 2.0</h5>
+<div style="margin-left: 2em;">
+
+<p><strong>Components in OAuth 2.0</strong></p>
+
+<ul>
+<li><strong>Resource Owner</strong> — user who owns the resource in a platform</li>
+<li><strong>Client</strong> — the other platform that wants access to user's resources</li>
+<li><strong>Resource server</strong> — the server with the resource</li>
+<li><strong>Authorization server</strong> — the server that issues the access token</li>
+</ul>
+
+<p><strong>OAuth 2.0 flow</strong></p>
+
+<ul>
+<li>Client redirects resource owner to Authorization server</li>
+<li>Resource owner authenticates and grants permission</li>
+<li>Authorization server returns authorization grant to Client</li>
+<li>Client requests an access token with authorization grant from Authorization server</li>
+<li>Auth server validates and returns access and optional refresh tokens</li>
+<li>Client now uses access token to get access to resource owner resources from the resource server, without sharing credentials</li>
+</ul>
+
+<p>OAuth 2.0 introduces Bearer tokens to make implementation easier, and allows devs to choose flows based on the client app type, e.g. a mobile app, server side app, smart TV.</p>
+
+<p><strong>Benefits of OAuth 2.0</strong></p>
+
+<ol>
+<li>Easier to implement for devs</li>
+<li>Different flow based on different device types:
+    <ul>
+    <li>Authorization code flow for server side apps</li>
+    <li>Implicit flow for browser based apps (discouraged due to security risk)</li>
+    <li>Client credentials flow for machine to machine communication</li>
+    <li>Device code flow, e.g. smart TV</li>
+    </ul>
+</li>
+</ol>
+
+</div>
+
+<h5 id="iv-openid-connect">iv. OpenID Connect</h5>
+<div style="margin-left: 2em;">
+
+<p>OAuth is for authorization but not authentication. Auth is who you are. Authorization is what permission you have on the platform. OAuth was great for authorization but did not solve the issue of authentication.</p>
+
+<p>OIDC is an extension of OAuth. OpenID Connect extended OAuth 2.0 by introducing an ID token JWT with payload like user id, iat, issuer.</p>
+
+<p><strong>OpenID Connect flow</strong></p>
+
+<ul>
+<li>Client redirects user to Authorization server</li>
+<li>User signs in</li>
+<li>Authorization server sends client authorization code + id token JWT</li>
+<li>Client exchanges authorization code for access token and id token if not present in previous step</li>
+<li>Client uses access token to perform different operations on the resource server on behalf of the user</li>
+</ul>
+
+</div>
+</div>
+</div>
+
+<h3 id="v-when-to-use-which-type">v. When to use which type</h3>
+<div style="margin-left: 2em;">
+
+<ul>
+<li><strong>Stateful auth</strong> — web application</li>
+<li><strong>Stateless auth</strong> — APIs, scalable systems</li>
+<li><strong>OAuth</strong> — third party integration, and login with external providers</li>
+<li><strong>API key</strong> — service to service</li>
+</ul>
+
+</div>
+
+<h3 id="vi-authorization">vi. Authorization</h3>
+<div style="margin-left: 2em;">
+
+<p>Authorization is providing specific permission to specific users on a platform. It asks: what can the user do in the platform?</p>
+
+<p>Meaning not all users have the same level of access. Common in a multi tenant application where users create organizations, and provide different permission to different kinds of members.</p>
+
+<h4 id="a-rbac">a. RBAC</h4>
+<div style="margin-left: 2em;">
+
+<p><strong>Role Based Access Control</strong> — users are assigned different roles and these roles are assigned different permissions.</p>
+
+</div>
+</div>
+
+<h3 id="vii-security-to-be-aware-of">vii. Security to be aware of</h3>
+<div style="margin-left: 2em;">
+
+<p>In terms of authentication and authorization, two things we need to be aware of.</p>
+
+<h4 id="a-error-messages">a. Error messages</h4>
+<div style="margin-left: 2em;">
+
+<p>During authenticating, sending detailed error messages will give attackers clues on what type of attack to focus on. E.g. email not found, incorrect password, account locked due to many retries.</p>
+
+<p>We should send generic error messages like invalid credentials.</p>
+
+</div>
+
+<h4 id="b-timing-attacks">b. Timing attacks</h4>
+<div style="margin-left: 2em;">
+
+<p>The faster the error message, the more clue the attacker has. Say in a typical auth flow the server does these steps:</p>
+
+<ol>
+<li>Check if email exists</li>
+<li>Check if account is locked</li>
+<li>Hash user input password and compare with stored password hashes</li>
+</ol>
+
+<p>In a case where the email does not exist, responses will be faster than if the password is invalid, which takes a while to respond. An attacker can use that as a clue to know if the email exists but the password was wrong.</p>
+
+</div>
+</div>
+</div>
+
+---
+
+<h2 id="7-validation-and-transformation"><u>7. Validation and Transformation</u></h2>
+<div style="margin-left: 2em;">
+
+<h3 id="i-data-integrity-and-security">i. Data integrity and security</h3>
+<div style="margin-left: 2em;">
+
+<p>For data integrity and security we want to keep in mind a set of rules and guidelines when building APIs. These rules and guidelines are to make sure the inputs from the client are in the expected format and our application does not break in unexpected circumstances.</p>
+
+<p>Inputs from the client can be in one of these forms: request body, query parameters, path parameters, headers.</p>
+
+<p>Validation and transformation should happen before we execute any business logic, or before a service method is called.</p>
+
+</div>
+
+<h3 id="ii-typical-backend-flow">ii. Typical backend flow</h3>
+<div style="margin-left: 2em;">
+
+<ul>
+<li>Request reaches our server</li>
+<li>Routing matching algorithms match the URL to a controller</li>
+<li>Controller calls a service method to execute the business logic</li>
+<li>Service method optionally makes one or more calls to the repository layer to interact with data</li>
+</ul>
+
+</div>
+
+<h3 id="iii-types-of-validation">iii. Types of validation</h3>
+<div style="margin-left: 2em;">
+
+<h4 id="a-type-validation">a. Type validation</h4>
+<div style="margin-left: 2em;">
+
+<p>Making sure the input fields are of a particular type.</p>
+
+</div>
+
+<h4 id="b-syntactic-validation">b. Syntactic validation</h4>
+<div style="margin-left: 2em;">
+
+<p>Though the types are correct, the input should follow a particular structure. E.g. email, phone, date are of type string but they have to follow a particular structure.</p>
+
+</div>
+
+<h4 id="c-semantic-validation">c. Semantic validation</h4>
+<div style="margin-left: 2em;">
+
+<p>The inputs should make sense. E.g. age not over 200, birthday not in the future, etc.</p>
+
+</div>
+</div>
+
+<h3 id="iv-transformation">iv. Transformation</h3>
+<div style="margin-left: 2em;">
+
+<p>Sometimes inputs from the client need to be changed into a particular format for us to execute our business logic.</p>
+
+<p>E.g. by default query params come as string, but we might have a constraint that pages should be between a certain number range 0–100. The string needs to be transformed before we can have our validation checks.</p>
+
+<p>Or transform input fields to a certain structure, e.g. username and emails to lowercase.</p>
+
+</div>
+
+<h3 id="v-frontend-vs-backend-validation">v. Frontend vs backend validation</h3>
+<div style="margin-left: 2em;">
+
+<p>We do not rely only on the frontend to do the validation for us. We need to have our own validation on the backend. What if the client is not a frontend app but an API client? That means we will have no form of validation.</p>
+
+<p>Frontend validation is for user experience, that is instant feedback for the user. Backend validation is for security and data integrity.</p>
+
+</div>
+
+<h3 id="vi-why-we-need-validation-and-transformation">vi. Why we need validation and transformation</h3>
+<div style="margin-left: 2em;">
+
+<ol>
+<li><strong>Security:</strong> making sure we are not prone to injection attacks</li>
+<li><strong>Data integrity:</strong> data from our application is in the correct format and accurate</li>
+<li><strong>Application does not break</strong> in unexpected circumstances</li>
+</ol>
+
+</div>
+</div>
+
+---
+
+<h2 id="8-controller-services-repository-middleware-and-request-context"><u>8. Controller, services, repository, middleware and request context</u></h2>
+<div style="margin-left: 2em;">
+
+<h3 id="i-request-lifecycle-in-the-server">i. Request lifecycle in the server</h3>
+<div style="margin-left: 2em;">
+
+<ul>
+<li>Client request comes to the server</li>
+<li>OS forwards to our application listening on a port</li>
+<li>Route matching algorithm matches to a controller layer</li>
+<li>Controller layer deserializes the request JSON into a native programming language datatype</li>
+<li>Validating and optionally transforming inputs, e.g. query params, path params, deserialized request body</li>
+<li>Controller calls service layer with the inputs</li>
+<li>Service layer optionally calls one or more repository layer methods</li>
+<li>Repository layer takes the input, constructs a DB query and returns the response</li>
+<li>Service layer receives the response, does some processing, returns to controller layer</li>
+<li>Controller layer sends the response</li>
+</ul>
+
+</div>
+
+<h3 id="ii-controller">ii. Controller</h3>
+<div style="margin-left: 2em;">
+
+<ul>
+<li>Receives a request object and sends a response object</li>
+<li>Deserializes the request object into the programming language native datatype</li>
+<li>Takes the data from the request, whether query params, path params, header, body</li>
+</ul>
+
+</div>
+
+<h3 id="iii-service">iii. Service</h3>
+<div style="margin-left: 2em;">
+
+<p>Should not deal with HTTP related stuff. Just a normal function with input that sends an output, not an HTTP response.</p>
+
+</div>
+
+<h3 id="iv-repository">iv. Repository</h3>
+<div style="margin-left: 2em;">
+
+<p>Takes the input, constructs a DB query and returns the response. The service layer optionally makes one or more calls to the repository layer to interact with data.</p>
+
+</div>
+
+<h3 id="v-middleware">v. Middleware</h3>
+<div style="margin-left: 2em;">
+
+<p>Optional functions which are executed within the request response lifecycle. These functions can be placed in between components in the request response lifecycle: before route matching, before controllers, services and repositories, before the response is sent to the user, hence the term middleware.</p>
+
+<p>They usually contain specific logic or checks that are handled for a lot of requests and can be chained.</p>
+
+<p>Order of middleware matters.</p>
+
+<h4 id="a-inputs-of-middlewares">a. Inputs of middlewares</h4>
+<div style="margin-left: 2em;">
+
+<p>A middleware function has 3 main inputs:</p>
+
+<ol>
+<li><strong>Request object:</strong> it gets the request object because the request passes through them and they can modify the request, like add new headers, before the controller gets the request.</li>
+<li><strong>Response object:</strong> they can return a response before it gets to the controller if the request does not meet certain criteria defined.</li>
+<li><strong>Next function:</strong> allows the middleware to pass the request downstream for other components like the controller, or other middlewares in the chain.</li>
+</ol>
+
+</div>
+
+<h4 id="b-why-middleware">b. Why middleware</h4>
+<div style="margin-left: 2em;">
+
+<p>Reduce code duplication. Middleware contains pieces of logic that run for a lot of requests. They are functions because we do not want to rewrite the same logic in multiple controllers over again.</p>
+
+<p>But we also do not want to call the function in every controller, hence why they have a next function, so they can be chained and can also return a response before the request gets to the application's main logic.</p>
+
+<p>E.g. if we have multiple endpoints and we have to do a common operation for each endpoint — security, logging, data parsing etc. Without middleware we have to repeat that logic for each handler, or write a function and call it in each handler. That is also some duplication. To minimize the duplication we delegate those common operations to middleware.</p>
+
+</div>
+
+<h4 id="c-common-use-cases">c. Common use cases</h4>
+<div style="margin-left: 2em;">
+
+<ol>
+<li><strong>Security</strong> — CORS, security headers, auth middleware, rate limits</li>
+<li><strong>Logging and monitoring</strong></li>
+<li><strong>Global error handling</strong> — check if any component threw an error before sending a nice response to the client</li>
+<li><strong>Compression</strong></li>
+<li><strong>Data parsing</strong></li>
+</ol>
+
+<p>With CORS the middleware checks the origin if it is part of the allowed, it adds the allow origin header to the request and passes to the next function, whether a new middleware. It is a middleware because it needs to happen for each API call our service receives.</p>
+
+<p>Global error handling middleware will get the error from any component and send a properly structured error message.</p>
+
+</div>
+</div>
+
+<h3 id="vi-request-context">vi. Request context</h3>
+<div style="margin-left: 2em;">
+
+<p>A kind of state that is limited to a particular request and accessed by all middleware and controller without passing it to them directly.</p>
+
+<p>E.g. after authentication verifies the user, it sets the user info metadata like id, role in a request context so that the downstream execution environment like the handler can get the user id from the request context.</p>
+
+<p>Request context is a shared state that is accessible to all handlers and middlewares so our system is loosely coupled.</p>
+
+</div>
+
+<h3 id="vii-why-the-various-components">vii. Why the various components</h3>
+<div style="margin-left: 2em;">
+
+<p>Why not a single function to handle controller, services, repository and even middleware logic? Because it is a design pattern to make the codebase:</p>
+
+<ol>
+<li>Maintainable — easy to maintain</li>
+<li>Easy to add new features and code</li>
+<li>Easy to debug</li>
+</ol>
 
 </div>
 </div>
@@ -1903,6 +2576,310 @@ Controller, service, repository
 
 
 
+Authentication and Authorization 
+
+historical context in the digital era 
+    digital era 
+        CTSS 
+        problem with CtSS
+
+    
+
+
+
+
+
+6. Authentication and Authorization
+
+    Authentication and authorization  asks the questions
+    Who are you and what can you do? in a given content platform, os 
+
+    Digital Authentication History  
+
+        Beginning of password usage CTSSS
+            In the early digital era where mainframes where the common computers, 
+            researches at MIT want a multiple user system of the computer without sharing users
+            personal files and data hence the birth of CTSS. 
+
+        1960s Compactible time sharing system CTSS 
+            CTSS was an operating system in the mainframes era that introduces the concept password for multiple users of the mainframes. The idea was multiple users can use the same mainframe computer with sharing user data and files. Hence user will have a username and password. 
+
+            problem with css 
+
+                CTSS stored password in plain text and an individual was able to print the password files in plain text, exposing a hugh security vulnerability. This made researcher think about secure password storage 
+
+            Hashing
+                Hashing a technique used to prevent storing password in plain text 
+                A password is passed through a cryptographical secure function and the output is a fixed length hashed string.
+                The hashed string is stored in instead and the amazing thing about hashing was it was one way. 
+
+                You can't get the original password from re hashing the hashed password. it was irreversible.
+
+
+            Password hashing is still used to today 
+
+        1970s Asymmetric cryptography (PKI)
+            Explosing in cryptography research invented DIfi Helman key exchange. Difi helman introduced the concept of asymmetric cryptography or public key infrastructure
+
+            Asymmetric cryptography enables two parties establish a shared secret over untrusted medium. This technique becomes the backend of modern auth protocols. 
+
+        1990s MFAs 
+            There was a need for secure authentication solution because username and password was not enough against brute force attacks. Introducing Multi Factor Authentication MFA
+
+            MFA combines three 3 things
+                1. Something you know eg password, pin etc 
+                2. Something you have eg a card, otp generators etc
+                3. Something you are eg fingerprint retina, iris etc
+
+
+        20th century
+            the rise of cloud computing, mobile devices, api based architecture etc demanded advanced authentication frameworks such as JWTs, Oauth2, Zero trusting, passwordless. 
+
+
+    Session, Json Web Token (JWT), Cookie 
+
+        Session 
+            HTTP Statelessness issue 
+                As the web evolves there was a need for dynamic contents or dynamic web applications which requires server having some form of memory of our interactions 
+
+                But HTTP the protocol used for communication between clients and servers is stateless, meaning server treats every request in isolated and server does not hold memory or store data of past requests. 
+                hence Sessions. 
+
+                Session was a technique to bring some form of state into the web so servers can hold memory of the user siging in , and this user is the one requesting this resource. 
+
+
+            How session works 
+
+                - User visits a platfrom and provides their credentials (username and password) 
+                - The client (browser, mobile app etc) send that information to the server
+                - Server validates the credentials (username exist, password matches etc)
+                - Server create a unique session id and stores session id with some user information like user id, username etc in persistence store like redis, or a database with expiry time
+                - Send the session id to client as a cookie 
+                - The cookie is stored in the user browser 
+                - Browser by default sends cookie on every subsequent request 
+                - Server recieves session id from cookie, query persistence store for session validity and grants user access 
+                - Session id in db are short times and server recreates new one when it expires 
+
+
+
+        Json Web tokens (JWTs)
+            Sessions becomes a bottleneck 
+                As web application becomes more distributed globally, sessions becomes a bottleneck because two machine reason
+
+                reasons
+
+                    1. Memory cost
+                        Storing millions and billions of user session data in persistent storage for large applications because very costly 
+
+                    2. Replication latency
+                        Replicate session data across an application's multiple persistent stores introduces latency 
+
+                    these scalability issue birth the creation of JWT. 
+
+            JWT 
+                Stateless mechanism for transferring user data across different parties. 
+                Is a self contain token with user data which requires no db lookup for authentication. 
+
+
+                The JWT string has 3 parts 
+                    <header>.<payload>.<signature>
+
+                header contains token metadata eg. algorithm used to sign the token.
+                paylod contains user data eg 
+                sub stories user if
+                lat when the token was issued and other optional fields. 
+
+                signature used to verify whether the token as being tampered with and also 
+                to verify if it was issued from us or the right sources. 
+
+                How JWT works
+                    - User visits a platfrom and provides their credentials (username and password) 
+                    - The client (browser, mobile app etc) send that credentials to the server
+                    - Server validates the credentials (username exist, password matches etc)
+                    - Server create a JWT token and signs it with a secret key
+                    - Send the JWT token to client usually access Token and refresh token
+                    - Clients stores in memory or cookie and send back in http request header 
+                    - Server verifies signature and grants the user access
+                    - Server does no db lookup all it need it self contain in the payload, user info and expiry time 
+
+                Pros of jwt
+                    1. Save alot of storage cost
+                    2. Scalability efficent in scalable systems. 
+                    3. Portable easy to transport
+
+                Cons of jwt 
+                    1. Revokecation issues 
+                        It is hard to revoke access to token unless the token expires, 
+
+                Work around JWT issues. 
+
+                    In the case where a user report impersonation issue it is hard to revoke access 
+                    various ways. changing the signing secret will cause every other user token in validate and 
+                    requires login. 
+
+                    1. Blacklist
+                        Have a table and putting the jwt token in blacklist. but this defeats the purpose of 
+                        JWT to be scalable and avoid db storage and lookups for every request 
+                    
+                    2. Short lived access token 
+                        The short the expiry, the less access the malicious user has. 
+
+        Cookies
+            Storing piece of information in a user's browser. 
+
+            Sent on every subsequent request. 
+
+
+
+    Types of Authentication methods 
+
+        1. Stateful Authentication 
+            Stateful authentication are session based authentication and it entails every time discussed above
+
+        2. Stateless Authentication
+            JWT based authentication and entails every thing discussed above 
+
+        3. Api Keys 
+
+        4. Open Authorization OAuth and OpenID connect (OIDC)
+
+            Access Delegation Problem 
+                As the web evolves one platform might need resources of a user in a different platform. 
+                eg A photo editing app might need user's google photos for editing, a hosting platform 
+                need access to github repository to build and deploy the code. 
+
+                In the inital stages, users had the share their credentials to these platform so there can access their resources
+                Theses poses a security threat as these platform have completely access to the user's account and access infromation they need not. 
+
+                Hence the birth of Open Authorization OAuth
+
+            OAuth
+                Engineers at twitter tried this delegation problem where instead of sharing username and password, 
+                tokens with limited permission are shared. 
+
+
+                OAuth1.0 flow 
+
+                    New app want access to old app resources 
+
+                    New app send request to old app to achieve user resource 
+                    old app sends a temporary request token 
+                    new app redirect user to old app to login and grant access to certain permissions 
+                    once approved, new app send the request token to old app for access token 
+                    now new app access user resources from old app with user sharing the credentials 
+
+                    limitations of OAuth1.0 
+
+                        1. Complex to implement: Developers found it difficult to implement
+                        2. Cryptographically sign every request and was error prone 
+
+
+                OAuth 2.0 flow 
+
+                    components in OAuth2.0
+
+                        a. Resource Owner - user who owns the resource in a platform
+                        b. Client - The other platform that wants access to user's resources 
+                        c. Resource server - The server with the resource 
+                        d. Authorization server - The server that issues the access token 
+
+                    OAuth 2.0 flow 
+
+                        Client redirects resource owner to Authorization server 
+                        Resource owner authenticates and grants permission
+                        Authorization returns authorization grant to Client 
+                        Client request for access token with authorization grant from Authorization server
+                        Auth Server validate and returns access and optional refresh tokens 
+                        Client now uses access token to grant access to resource owner resources from the resource server
+                        without sharing credentials 
+
+
+                        Benefits of OAuth 2.0 
+                            1. Easier to impement for devs 
+
+                            2. Different flow based on different device types 
+                                a. Authorization code flow for server side apps 
+                                b. Implicit flow for browser based apps (discouraged due to security risk)
+                                c. Client credentials flow machine to machine communication 
+                                d. Device code flow eg smart tv 
+
+
+                OpenID Connect (OIDC)
+                    Oauth not for authentication. 
+                        Auth for authorization but not authentication hence 
+
+
+                    OIDC is an extensible of oauth. Oauth is not meant for authentication 
+
+                        O
+
+
+                     OAuth was grant for authorization but did not solve the issue of authentication 
+
+                    Auth is who you are. 
+                    Authorization what permission you have on the platform 
+
+                Birth of OpenID connect 
+
+                    OpenID connect extended oauth 2.0 by introducing ID token JWT with payload like 
+                    user id , iat, issue 
+
+
+
+
+
+
+
+                different component of the technique of sharing the token 
+
+                    Resource owner - user who owns the resources in a platform 
+                    Client - The other platform that wants access 
+                    Resource server - The server will the resource 
+                    Authorization server - The server that issues the token 
+
+                OAuth1.0 flow 
+                    
+                    Authorization server sends token to the client
+                    Client use that token with specific permission to the Resource server 
+                    and Client gets limited access to resource owners resources 
+
+
+                OAuth2.0 
+                    OAuth1.0 
+                        1. flow was complex for devs to implement
+                        2. used cryptographical signatures for every api request and was error prone 
+
+                    Oauth 2.0 
+                        introduces Bearer tokens to make implementation easier 
+                        2. Allow devs to choose flows based on the client app type eg a mobile 
+                        app, server side app, smart tv 
+
+                    Different flow based on device type
+                        1. Authorization code flow for server side apps 
+                        2. Implicit flow for browser based apps (discouraged due to security risk)
+                        3. Client credentials flow machine to machine communication 
+                        4. Device code flow eg smart tv 
+
+
+
+                OAuth was grant for authorization but did not solve the issue of authentication 
+
+                    Auth is who you are. 
+                    Authorization what permission you have on the platform 
+
+                Birth of OpenID connect 
+
+                    OpenID connect extended oauth 2.0 by introducing ID token JWT with payload like 
+                    user id , iat, issue 
+
+                OpenID connect flow 
+                    Client redirect user to Authorization server 
+                    user sign in 
+                    Authorization server sends client Authorization code + id token jwt token 
+                    Client exchange authorization code with access token and id token if not present in previous step 
+
+                    Client use access token to perform different operation in resource source
+                    on behalf off user 
 
 
 
@@ -1912,6 +2889,573 @@ Controller, service, repository
 
 
 
+
+
+
+
+
+                header specifies metadata like signing algorithm 
+        payload specifies user data. 
+            has a form we follow
+            sub - stores user id 
+            lat - when jwt was issued
+            and optional fields. 
+        signature verify if we issued it or tampered with. 
+
+
+        saves alot of storage cost
+        scalability 
+        portability
+
+        challenges 
+            token theft impersonate user no mechanism to invalidate the token until it expires 
+                or server changes it secret (problem is all user token will be invalid and has to login in again )
+
+            difficult to revoke user access 
+
+        blacklist to block and revoke but if doing db lookup for check all token in the blacklist 
+        why not use sesssion which is classified as more secure 
+
+
+            
+
+
+
+
+
+
+
+
+
+    problem with ctss 
+        CTSS stored password in plain text, an a individaul was able to print the password files in plain text
+        Marked the genesis of secure password storage using techniques like Hashing 
+
+    solution
+
+    Hashing takes a string, pass it through a crypographically secure function to produce a hashed value 
+    and not reversible. 
+
+    1970's 
+        introduced 
+        Asymmetric cryptography enabling two parties to establish a shared secret over untrusted medium     
+        Become the backend of modern auth protocols 
+        also called PKI (Public key infrastructure 
+        
+    1990
+        waas a need for scalable auth methods username and password where not enough against 
+        brute force and dictionary attacks 
+
+        leading to MFA
+
+        MFA combines 3 things 
+            1. something you know password, pins
+            2. something you have cards, otp generator
+            3. something you are biometric 
+
+        
+    20th century
+        rise of cloud computing, mobile devices, api based architecture 
+        demanding advanced auth based frameworks 
+
+        Oauth2
+        JWTs
+        Zero trusting 
+        Passwordless 
+
+    Session, JWTS, Cookies 
+
+    Session 
+        HTTP was the backend of all client server communicate and htTP was stateless 
+        Means server treats request in isolation and does not remmember previous request. 
+
+        was ideal for early web with mostly consisted static pages and images and reads only 
+
+        As web transform to dynamic content makes stateful interaction. server has to have some form of memory of interactions
+
+        hwo did it work 
+            When user login, server creates a unique session id and stores with relevant user data in a persistent store db, or redis
+            session id was sent to client as cookie 
+            so be sent back on every request with cookie . 
+            session are short lived. expiry and server creates new one and send to user
+
+    JWT 
+        why jwt 
+            by 2000s web application grow to distributed systems globaly
+
+            1. 
+            stateful system even though effective was they causes bottleneck because of memory 
+            maintaining session data for millions of uses become become costly because of memory 
+
+            2. replication syncing session data in different servers in different regiions introduced latency 
+            delays in authentication user 
+
+            leading to jwt 
+
+
+        2015 stateless mechanisms for transferring claims between different parties 
+        self contain user data token. 
+
+        jwt string has 3 parts
+
+        <header>.<payload>.<signature>
+
+        header specifies metadata like signing algorithm 
+        payload specifies user data. 
+            has a form we follow
+            sub - stores user id 
+            lat - when jwt was issued
+            and optional fields. 
+        signature verify if we issued it or tampered with. 
+
+
+        saves alot of storage cost
+        scalability 
+        portability
+
+        challenges 
+            token theft impersonate user no mechanism to invalidate the token until it expires 
+                or server changes it secret (problem is all user token will be invalid and has to login in again )
+
+            difficult to revoke user access 
+
+        blacklist to block and revoke but if doing db lookup for check all token in the blacklist 
+        why not use sesssion which is classified as more secure 
+
+
+    Cookie 
+     Is a way of storing information in a users' browser. With the help of cookies, server
+     can store some piece of information in clients browser
+
+     Different types of auth
+        stateful auth
+        stateless auth
+        aoi key based 
+        oauth2.0 
+
+    Stateful auth
+        how it works 
+            client sends username and password
+            server check validity and generate a session id and user data in 
+            redis or db 
+            sends sessiion id back to client in a cookie
+
+            because of the nature of cookie 
+            all requst after will have the cookie with session id present 
+
+            pro
+                centralized control of all session, 
+                easily revoke session, 
+
+            challenges 
+                scalability issues 
+                operating complex with distributed systems and replication
+
+    Stateless 
+        how it works 
+            cleint sends username and password 
+            server checks the validity
+            server generates signed JWT token with a secret key with user info
+            (id, name, role etc )
+
+            sends it back to the client in header Authorization
+
+            client send the tokenn in the request header for subsequent requests
+
+            cleint extracts token and tries to verify with secret key 
+
+
+            pros 
+                scalability
+                ideal for distributed architecture and mobile friendly applications
+
+            cons
+                token revoking is complex 
+
+    API Key based auth 
+        how it works 
+            goes to a platform interface 
+            generate api key, and get a cryptograhically random secure string
+            this string is used to gain access to server resources 
+
+
+        why 
+            when we need programmtic access to restricted server resources. 
+            ideal for machine to machine communication. 
+
+
+    OAuth2.0 OpenId Connect 
+
+        why 
+            the more platform you visit, the more credentials you create and maintain 
+            just say you do not forget your password, you may use the same password 
+            for all platforms 
+
+            the proses a security risk 
+
+            1. A security breaches in one platform compromises all the other accounts
+
+
+            This gave rise to delegation. 
+
+            Where one website need access to other website resources. 
+            eg social media app import you google contacts 
+            
+            solve to one platform having access to other platform resources 
+                initial solution shares passwords leading disasters     
+                meaning give full access to everything in account 
+
+                impossible to revoke access without changing password everywhere 
+
+
+            delegationn problems 
+
+            2007 OAuth 
+                Engineer in big tech tried to solve the problem where 
+                user can grant access to resources from one platform to another withut 
+                sharing password. 
+
+                technique of sharing token with specific permissions 
+
+                different component of the technique of sharing the token 
+
+                    Resource owner - user who owns the resources in a platform 
+                    Client - The other platform that wants access 
+                    Resource server - The server will the resource 
+                    Authorization server - The server that issues the token 
+
+                OAuth1.0 flow 
+                    Client redirects resource owner to Authorization server 
+                    resource owner authenticates and grants permission 
+                    Authorization server sends token to the client
+                    Client use that token with specific permission to the Resource server 
+                    and Client gets limited access to resource owners resources 
+
+
+                OAuth2.0 
+                    OAuth1.0 
+                        1. flow was complex for devs to implement
+                        2. used cryptographical signatures for every api request and was error prone 
+
+                    Oauth 2.0 
+                        introduces Bearer tokens to make implementation easier 
+                        2. Allow devs to choose flows based on the client app type eg a mobile 
+                        app, server side app, smart tv 
+
+                    Different flow based on device type
+                        1. Authorization code flow for server side apps 
+                        2. Implicit flow for browser based apps (discouraged due to security risk)
+                        3. Client credentials flow machine to machine communication 
+                        4. Device code flow eg smart tv 
+
+
+
+                OAuth was grant for authorization but did not solve the issue of authentication 
+
+                    Auth is who you are. 
+                    Authorization what permission you have on the platform 
+
+                Birth of OpenID connect 
+
+                    OpenID connect extended oauth 2.0 by introducing ID token JWT with payload like 
+                    user id , iat, issue 
+
+                OpenID connect flow 
+                    Client redirect user to Authorization server 
+                    user sign in 
+                    Authorization server sends client Authorization code + id token jwt token 
+                    Client exchange authorization code with access token and id token if not present in previous step 
+
+                    Client use access token to perform different operation in resource source
+                    on behalf off user 
+
+
+    When to use which type of authentication
+
+        Stateful auth - web application 
+        Stateless auth - APIs, scalable systems 
+        Oauth - third party integrationn , and login with external providers 
+        Api key - service to service 
+
+
+    Authorization 
+        is providing specific permission to specific users on a platform. It asks the What can the user do in the platform?
+
+        Meaning not all users have the same level of access 
+
+        Common in a multi tenact application where users create organizations, 
+        and provide different permission to different kind of members 
+
+        Authorization techniques 
+            1. RBAC - Role Based Access Control
+                user are assigned different roles and these roles are assigned different permissions
+
+
+    Security 
+        In terms of authentication and authorization, two things we need to be aware. 
+
+        1. Error message 
+            During authenticating sending detailed error message, will give attackers clues 
+            on what to type of attack to focus on 
+
+            eg email not found, incorrect password , account locked due to many retries
+
+            we should send generic error messages like invalid credentials 
+
+
+        2. Timing attack
+            there faster the error message, the more clue the attacker has 
+            say in a typical auth flow 
+            user credentials 
+            server does these steps 
+                1. check if email exist
+                2. check if account is locked
+                3. hashed user input password and compare with stored password hashes
+
+            in a case where the email does not exist responses will be faster than 
+            and if password is invalid it takes a while to respond 
+            
+            attacker can use that an a clue to know if the email exist but the password was wronng
+
+
+
+
+
+
+
+
+
+
+
+
+
+7. Validation and Transformation 
+
+
+
+
+
+
+        
+
+
+
+
+        
+
+    
+
+    
+
+7. Validation and Transformation 
+    data integrity and security
+        For data integrity and security we want to keep in mind a set of rules and guidelines when building apis 
+        These rules and guidelines is to make sure the inputs from client are in the expected format and our application do not break at unexception circumstances. 
+
+        Inputs from client can be in one of these forms request body, query paramaters, path parameters, headers.
+
+
+        typical backend flow 
+            - Request reaches our server
+            - Routing matching algorithms matches the url to a controller
+            - Controller calls a service method to execute the business logic
+            - Service method makes optionally one or more calls to repository layer to interact with data. 
+
+        validation and transformation should happen before we execute any business logic or before a service method is called. 
+
+    types of validation
+        1. Type validation: Making sure the input fields are of a particular type
+
+        2. Syntactic validation: Though the types are correct, the input should follow a particular structure. eg email, phone, data are of type string but they have to follow a particular structure. 
+
+        3. Semantic validation: The inputs should make sense. eg age over not over 200, bithday not in the future etc 
+
+
+    Transformation 
+        Is when ssometimes, inputs from client needs to be changed in a particular format for us to execute our business logic 
+
+        eg by default query params comes as string, but we might have a constriant that pages so be between a certain number range 0 - 100
+        string needs to be transform before we can have our validation checks 
+
+        or transform input field to certain structure eg username emails to lowercase.
+
+
+
+    Frontend validation vrs backend validation
+
+        We do not rely only on frontend to do the validation for us. We need to have our own validation on the backend. 
+        What if the client is not a frontend app but an api client that means we will have not form of validation. 
+
+        Frontend validation are for user experience that is instant feedbacks for the user.
+        Backend validatiaon is for security and data integrity.
+
+
+
+    why we need validation and transformation 
+
+        1. Security: making sure we are not prone to injection attacks
+        2. Data integrity: Data from our application are in the correct format and accurate
+        3. Application do not breaking in unexpected circumstances 
+
+
+
+
+
+8. Controller, services, repository, middleware and request context
+    Request lifecycle in the server 
+        - Clientrequest comes to the server
+        - os forwards to our application listening on a port 
+        - route matching algorithm matches to a controller layer
+        - controller layer deserializes the request json in native programming language datatype
+        - validating and optionally transfromation inputs eg query params, path params, deserialized request body
+        - controller calls service layer with the inputs
+        - service layer calls optionally one or more repository layer methods 
+        - repository layer takes the input take construct db query and returns the response
+        - Service layer recieve response, does so processing, return to controller layer 
+        - Controller layer sends th response
+
+
+
+    Controller
+        - Recieves a request objects and sends a response object
+        - Deserialize request object into programming language native datatype 
+        - Takes the data from the request whether query params, path params, header, body
+
+    Service 
+        should not deal with http related stuffs
+        just a normal function with input and send an output not an http response 
+
+
+    Middlewares 
+
+        An optional functions which are executed within the request response lifecycle. 
+        These function can placed in between components in the request response  lifecycle the before the  routing matching, before controllers, services and respositories, before the response is sent to the user hence the term 
+
+        The usually contain specific of logic or checks that are handled for alot request and be chained. 
+
+        inputs of middlwares 
+            Middlaware function has 3 main inputs, 
+            1. Request objects: It gets the request object because the request passes through them and they can 
+                    modify the request like add new headers before the controller gets the request 
+
+            2. Response objects: Theere can return a response before it gets to the controller if the request does not meet certain criteria defined 
+
+            3. Next function: The allowed the middleware to pass the request downstream for other components like the controller, 
+            or other middlewares in the chain. 
+
+
+        why middleware
+            reduce code duplication
+                middleware contains pieces of logic that run for alof of requests. There are functions because we do 
+                not want to rewrite the same logic in multiple controllers over again.
+
+                but also do not want to call in the function is every controller hence why the have a next function 
+                so there can be chained and can also return a response before the requset get to the application main logic 
+
+
+        commong use cases of middlwares 
+            1. security - cors, security headers, auth middleware, rate limits
+            2. logging and monitoring 
+            3. global error handling - check if any component threw an error before send a nie response to client 
+            4. compression
+            5. data parsing 
+
+
+        Request context 
+            a kind of state that is limited to a particular request and accessing by all middleware and controller without passing 
+            it to them directly 
+
+            eg authentication after verifies user set the user info metadata like id , role  in a request context 
+            so that the downstream execution environment like the handler can get the user id from the request context 
+
+            request context is a shared state that is accessible to all handlers and middlewares so our system is losely coupled
+
+
+        why the various components 
+            Why not a single function to handle contoller, services, repository and even middleware lofic 
+            because it is design pattern to make codebase 
+                1. maintainable - easy to maintain 
+                2. eeasy to add new features and code
+                3. easy to debug 
+
+
+                
+
+
+    middlewares 
+
+
+        Are optionally function which are executed in the middle of the components involved in the request 
+        response lifecycle.
+
+        middleware function may execute before 
+            - routing matching 
+            - controller, service and repository
+            - before the user response
+      
+        just like controllers, there have request, and response objects as input. 
+        Plus an additional next function to move to next function because of that they can return 
+        a response before the route matching or controller is even run 
+
+        why need middleware
+            are a kind of controller with one additional capability next function 
+            next execution function
+
+            middleware can respond without request reaching the handler 
+            middleware can also modify request 
+
+        why use middlewares 
+            why the extra step by not do everything in handler
+            just like function we do not have to write the same logic over again in different places 
+            perform same logic in our request lifecycle in different requests
+
+            eg if we have multiple endpoints and we have to do common operation for each endpoint 
+            secuirty, logging, data parsing etc 
+
+            without middleware we have to repeat that logic for each handler 
+            or write a function and call it for in each handler. 
+            but that is also some duplication
+
+            to minimize the duplication. we delegate the responsibilities of dealing with some common operations to middleware 
+            compression 
+
+            1. reduce code duplication
+
+        order of middleware matters 
+
+
+        common use 
+
+        common operation for using middlewares 
+            1. security - cors, seacurity headers, auth middleware, rate limits
+            2. logging and monitoring
+            3. global error handling 
+            4. comporession
+            5. data parsing 
+
+        with Cors the middleware checks the origin if it is part of the allowed, its add the allow origin header to the request
+        and passing to the next function whether a new middleware 
+        which is a middleware because it need to happen for each api call our service recieve
+
+        Global error handling middleware will get the error from any component and send right properly structured error message. 
+
+
+    Request context 
+        a kind of state that is limited to a particular request and accessing by all middleware and controller without passing 
+        it to them directly 
+
+        eg authentication after verifies user set the user info metadata like id , role  in a request context 
+        so that the downstream execution environment like the handler can get the user id from the request context 
+
+        request context is a shared state that is accessible to all handlers and middlewares so our system is losely coupled
+
+
+    why the various components 
+        Why not a single function to handle contoller, services, repository and even middleware lofic 
+        because it is design pattern to make codebase 
+            1. maintainable - easy to maintain 
+            2. eeasy to add new features and code
+            3. easy to debug 
 
 
 
