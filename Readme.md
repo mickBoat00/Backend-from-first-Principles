@@ -3907,6 +3907,44 @@ summarize
 
 
 
+9. REST API Design
+    There are different technologies to build apis like grpc, graphql etc. As a backend engineer, this is where i will spend alot of working and thinking about. 
+
+    This notes are focused on REST API Design creating a standard  
+
+    Why rest api design 
+        To follow a standardized or consistent way of designing apis, payload and everything surronding apis so we focus more on our business logic and do not spend much time answering questions that comes up when design apis like 
+
+        1. Should the urls be plural or singular 
+        2. Updating resource should we call PATCH or PUT method
+        3. If non crud operation, a custom action which method should you use etc
+
+    history 
+
+        Tim Berner Lee, world wide web (www) and expotential usage 
+            In 1990 Tim Berners Lee started a project called the worldwide web (www) to share knowledge and information globally. With that in mind invented all these technologies in a year URI, HTTP Protocol, HTML, webserver, html editor in browser, wysiwyg. 
+
+            A problem across when within a short time alot of people started using this technology and he did not acount for scale. To scale the web, new techniques, standards had to be introduced. 
+
+        Roy Fielding and scalability concerns 
+            Roy Fieldings introduced to some 6 constraints help with scale of the web
+
+            These are the constraints 
+
+                1. Client Server: seperate of concern between client and server. client handles user experience, while server handles data storage and business logic. Allowing each component to evolve independently and improve scalability. 
+
+                2. Uniform Interface: 
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3955,24 +3993,26 @@ Rest API Design
     couple of constraints 
     1. Client Server - seperate of concern between client and server. client handles user experience, while server
         handles data storage and business logic. 
-        allow each component to evolve indepenedently improve scala
+        allow each component to evolve independently improve scala
 
     2. Uniform interface
         a standard way of web components to communicate with each other. 
-        consistent interface across all services 
+        Unifromity provide consistent interface across all services . 4 sub constraints 
+        resource identification, resource manipulation, self descriptive messages, hypermesia as the engine
+        simplifies overall system architecture
 
     3. Layered system 
         architecture composed of hierarchical layer and each layer can only see and interact with 
-        the layer below it. scalable , security, ability to add intermediate components , like load balancers 
-        and proxy servers.
+        the layer below it. allowing scalable , security, ability to add intermediate components , like load balancers 
+        and proxy servers etc used today to scale our applications.
 
     4. Cache 
-        Server should label resources as cacheable or not by the client. leads reduce server load, improve network efficency
-        , improve user 
+        Server should label resources as cacheable or non cacheable not for the client. Which helps reduce server load, improve network efficency, improve user experinece providing faster response times.
 
-    5. stateless - each request from the client must contain all the necessary information to process the request
+    5. stateless - each request from the client must contain all the necessary information to process the request.
+        this improves reliability, scalable since any server can handle any request. 
 
-    6. Code on demand (optional) - server extends clients function by transfering code to the client like js
+    6. Code on demand (optional) - server can extend clients functionality by transferring executable codes to client.
 
 
 
@@ -3982,8 +4022,7 @@ Designing APIs
     Rest api is the common standard of designing apis
 
     Developers have many questions when writing, if they are stick to the standards , what methods to use for custom actions
-    that are not crud, should they use plural or singular for resource names, 
-    worrying about whether their api is restful or not. 
+    that are not crud, should they use plural or singular for resource names, worrying about whether their api is restful or not. 
 
     A little history 
 
@@ -4011,54 +4050,60 @@ Designing APIs
 
         6. Code on demand it is optinal, server can extend clients functionality by transferring executable codes to client.
 
-    What does REST means
+    Why is it called REST
         The name REST stands for Representational State Transfer
-            Web resources can be represented in different formats depending on the client or server
-            eg. Your profile information stored in a db table as a column can be representated in json, html , xml 
-            depending on the client and server
+            Representational - This means web resources can be represented in specific formats depending on the client or server.
+            This respresentations are in specific formats eg json, html, xml
+            eg. Your profile information stored in a db table as a column can be representated in json in a server to server communication
+            while the same data can be represented as xml in a server to client based communication.
 
-            State current condition of the resource that is the actual data stored in a db. The current information
-            ur profile stored in db. 
+            State -  current attribute or property of the resource. eg Current property of the resource 
+            eg The current information stored user profile stored in db.  or shopping cart state. 
 
-            when a request is made for the profile, the server does not send raw object but sends a representation 
-            of the state in a specific format like json, xml
-
-            transfer movement of that state in a representational format between clients and servers
-            using a http protocol.
+            Transfer movement of that state in a representational format between client and server using a http protocol.
 
 
-        Rest is an architectural style where one resource is particular condition can be transferred in different formats using an
-        underlying protocol http between clients and servers. 
+        Rest is an architectural style where a resource can be in 
+        1. diffrernt formats
+        2. its state can be transferred between clients and servers 
+        3. clients and servers communicate by sharing representations of the resource 
+        4. this architecural style follows specific constraint to make the workflow more scalable.
+
 
         eg. server store my current profile info in a database, and sends it to a client in a different format like json, html
         xml instead of the db table object using the underlying http protocol
+            
 
-        clients can send the update info of my profile original in js object as a different format like json to the server using http
 
-        and the follow the 6 specific constraints to make the system more scalable. 
+    API route conventions 
 
-    Idempotency 
-        perform same actions multiple times has the same effect as performing it once. 
-        does not matter how many times you retry the same request, it will have the same effect on the resource
+        URL rules
+            1. Resource path segment of the url should always be plural. eg books/, books/1/ 
+            2. No spaces or underscore in url. eg, books/harry-potter
+            3. Any custom action which is not crud, use the POST method
 
-        get, post, patch, put, delete others head, options
+    Idempotency  vs Non idempotency
 
-        POST 
-            is non idempotent 
-            open end rest api makes the post method open end, meaning whenever we have an action that is not 
-            a crud , we can put it under post 
+        Idempotentcy send the same request multiple times has the same effect on the resource as sending it once. 
+        idemptent methods, get, put, delete 
+
+        Non idempotency is sending the same request multiple will have a side effect on the resource. 
+        Idempotent method, POST
+
+        POST is also open ended method, meaning whenever we have an action that is not crud, we can use POST for it. 
+        eg sending email.
 
 
 Why follow standards like rest api standards 
 
-    eliminate confusion and assumption in our workflow 
+    eliminate confusion and assumption in our api usage. 
         if ur api use delete for post operations it leaves more for error and confusion
 
 
-Things to do when developing api
+API Design workflow
 
     1. Start from ui design, to have an idea how user are going interact with your data
-    2. Identify resources, nouns from the ui client requirements etc
+    2. Identify resources, nouns from the ui clients,  requirements etc
     3. Database schema
     4. API interface design
 
@@ -4117,7 +4162,7 @@ url structure
 
     https - scheme
     michael.com - domain
-    api.michael.com - supdomain
+    api.michael.com - subdomain
     /blogs - resources
 
   
@@ -4249,3 +4294,5 @@ FULL TRANSCRIPT
 
         A REST API is designed first. It is not coded right away.
         Dedicate a separate session to designing the interface without thinking about programming language.
+
+
