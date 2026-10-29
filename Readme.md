@@ -4296,3 +4296,194 @@ FULL TRANSCRIPT
         Dedicate a separate session to designing the interface without thinking about programming language.
 
 
+10. Database
+
+    Why databases
+        Persistent storage: Way to persist information across different sessions. Storing data in a way that it survives even after the program that creates it stops. 
+
+    The database in backend
+        The term database can refer to any kind of structured storage like contact list in phone, notes in form etc. 
+        Database in relation to backend is disk based storage. HDD, SSD 
+        Disk is cheaper and slower compared to other forms of storage like RAM. 
+
+        Database Management System (DBMS)
+            Storing data in disk is not enough , we need ways to retrieve, update, delete the data in a efficient way
+            hence we have softwares dbms to efficiently provide crud operations to the clients of the database. 
+            security, 
+
+            responsibility 
+                1. organization
+                2. access - crud 
+                3. integrity
+
+
+        why dbms 
+            image if we store data in txt file 
+            1. Parsing is error prone 
+            2. No structure cant specify can't be stored in a particular structure
+            3. Concurrent what happen when two people at the same time try to ahead the same file.
+
+
+        types of dbms 
+            1. Relational : database system which organizes data in tables, rows and columns. key feature data is structured and 
+            Before insertinng data inserting data into a database, it must a predefined schema. it should have a table with columsn and that table has a strict schema have to define the columns and data type. 
+            Because it take it cffer data integrity . we can bet on the accuracy of the data. 
+            we use sql to interact with the database.
+            eg sql , mysel postgres 
+
+            2. Non relational 
+                does not enforce pre defined schema 
+                structure of each document(row) may no be the same
+
+
+    Postgres
+        why postgres
+            Open source
+            sql based use sql for queries
+            extensible - offer alot of features, and can be customize
+            reliable and scalability
+            good json support.  
+
+        postgress data types
+
+        database migrations 
+        postgress is case insensitive fullName = fullname
+        
+        parameterized queries is a safety mechanism provided by a database
+
+    
+
+11. Caching 
+    What is caching 
+        Is the mechanism to decrease the amount of time and effort to perform some kind of work. It can also be keeping a subset of some data in a location which is fast to access. It takes less time and less effort
+
+    How important caching is 
+        using big tech companies as an example 
+
+        1. Google search 
+            This is what happen when we seacrch on Google.
+            Google servers or search engines crawls, index and ranking millions of page for our search result.
+            This process is computational expensive. Requiring alot of CPU power and millions 
+
+            But some searchs like what is the weather today, the results rarely change within some few hours or minutes and it is asked a million time again.  
+            To prevent the server from being overload by doing this computational expensive process for the same results. Google implements some for caching by storing results in a distributed memory so subsequent request are faster and does not have to be that expensive. 
+
+
+        2. Netflix 
+            A Platform that streams large movie files to end users. Based of a users network speed and devices, it sends optimised version of movie file.  To reduce server loads and long buffering, they cache such files in globally distributed servers close to the end users called cdns 
+
+
+        3. X twitter
+            Shows Trending topic for a region by analysing millions of tweets in real time which is computational expensive. To avoid doing that again and again when a user goes to the trending section. The use intellignent caching algorithms to cache trending topics so that each request for that section is not as expensive. 
+
+    The pattern to notice
+        From the above example we can notice a pattern that whenever we have to do a computationally expensive operation for each request or sending huge amount of data for each request. The best approach is to caching the responses. 
+
+
+    Levels of caching 
+        1. Network level caching 
+            a. Content Delivery Networks (CDNs)
+                CDNs caches content on server that geographically closer to the end users to minimize latency and computation. 
+
+                How CDNs works 
+                    User browser request a resource eg. image, video, webpage, audio through the url 
+                    Browser sends a dns query for the ip address of the server with the resource. 
+                    CDNs DNS routes the traffic to the neares Point of Presence (PoP)
+                    PoP means a region where there are multiple edge servers 
+                    Edge servers checks the requested resource is in cache or not 
+                    If cache hit resnds the resource to the user. 
+                    If cache miss, fetches the resource from the orgin server, sends back the response to the user 
+                    and caches it with a ttl - how long to keep a resource. 
+
+
+            b. Domain Name System (DNS)
+                heavy relies on caching to reduce latency of all dns queries happening for billions of users at the same time. 
+
+                how DNS query works 
+                    User types a url in their devices laptop smart phone
+                    Devices send dns query to recursive resolver provided by user's ISP, or a public one provided by google, cloudflare etc 
+                    The recursive resolver RR checks its local cache.
+                    If a cache miss, queries other resolvers 
+                    first one is the root servers, 
+                    Root servers do not have a cache, they have address of top level domains like .com, .edu, .net etc
+                    RR query TLD, TLD does not have a cache but address of Authoritative Servers
+                    RR queries the As for the ip address 
+
+                Caching comes to play
+                    DNS implement caching but of the amount of work to recursively reach out to multiple servers
+
+                    After the ip address is gotten. 
+                    Most OS maintain a local cache for DNS
+                    The browsers themselve maintain a local cache 
+
+                    when subsequent request, check the browser cache, os cache, rr cache, before the entire dns query is performed
+
+
+        2. Hardware level 
+            A typical computer has the following components 
+                1. CPU Unit - One or more CPU units where each has two caches L1 and L2 caches.
+                2. L3 cache - A cache shared among CPU units 
+                3. Random Access Memory RAM
+                4. Disk Storage - HDD / SDD 
+                5. Network Card 
+
+
+            Why RAM is faster than DIsk storage 
+                which Disk storage like HDD and SSD you can access the data stored in a mechanical way 
+                HDD there is a head that revolve around the disk before finally fimding the data 
+
+                RAM has a alot of capacitor and through the use of eletric signal, and direct access to different parts of the memory address and can directly access the data with a single electrical signal. 
+                it does not matter where what part of the memory the data is stored, RAM can access it with a constant speed and time. 
+
+                RAM has limited capacity
+                RAM is volatile whenever the computer is refresh on data in it is cleared. 
+
+                Storing data in disk the data persist because it physically write the data on the disk
+
+
+        3. Software level
+            Softwares like in memory key value no sql databases like Redis, memcache , elatic cache, use the underlying hardware of a computers like RAM to store and access data, making the faster and uses the secondary storage disk storage to persist the data, so that when a server restarted, it loads the data from disk storage on the RAM. 
+
+
+
+    Types of caching strategies 
+
+        1, Lazy caching  (Cache aside)
+            This is where caching is not proactive. data is cached when a client requests a resource, 
+            server checks the cache, if there is a cache miss fetches the data directly from the db , 
+            stores it in the cache and returns the response. 
+            Subsequent request will have a cache hit. 
+
+        2. Write through 
+            Everytime there is a write request to change or update a resource such as making these calls POST, PUT, PATCH, DELETE. 
+            The cache is also updated or change alongside. 
+            So subsequent request will be gotten from the cache. But all write operations has an overhead. 
+            The advantage is the cache is always fresh. 
+
+
+    Eviction Policies 
+        Most cache using the primary storage ie the RAM and their are limited. Hence to not run of memory, some cached items has to be removed. And there are various strategies for that 
+
+
+        1. Least Frequently Used (LFU)
+            Cache maintains the frequency of how much times a key is being used and evict the lest frequent ones
+
+        2. Least Recent Used (LRU)
+            Cache tracks the times a key as being access and evict the oldest ones accessed 
+
+        3. Time to Live (TTL)
+            Cache can have maintain a key value for a limited amount of time. 
+
+
+    Use caches of in memory databases 
+        1. Compute intensive DB query: Say we have a query which does alot of joins and aggregations and results in a few rows. This is a compute intensive operation. If u noticed this is done very frequently , we can cache the result with a ttl.
+
+        2. Session data: Session data are usually cache to prevent latency on every request, because every request has the check if the user has a valid session or not and that is a DB query. 
+
+        3. External api calls: Can cache external api calls results depending on the situation, this can prevent us from being rate limited or increase more cost. eg weather data.
+
+        4. Rate limiting mechanisms: In memory can help with our rate limiting implemenation, where we map ip address to the request counts and quickly update and check.
+
+
+
+
