@@ -4486,4 +4486,83 @@ FULL TRANSCRIPT
 
 
 
+12. Task queue and background job 
+
+    What is a task queue, its components and how they work
+            a system for managing and distributing background jobs and tasks.
+
+            Components 
+                Background job - any piece of code that runs outside the request response lifecycle. It does not need to happen immediately. eg sending user verification email.
+
+                Producer - the application code that creates the tasks and pushes onto the queue.
+
+                Consumer - an application run in a different process that picks up the tasks from the queue and runs them. 
+
+                Broker - the queue for storing tasks until it is consumed. 
+
+            How the work
+                Producer creates and pushes tasks unto the queue 
+                Consumer pulls out tasks from the queue to perform. 
+                Queue wait for an acknowledgement that the tasks success or failure. 
+
+                Each tasks has a visibility timeout, if the consumer fails to acknowledge the success or failure, 
+                queue makes it available to other consumers, the timeout prevent tasks from getting lost 
+                if tasks fails, it can be retried and if successful, removed from the queue. 
+
+    Why do we need them 
+        Improve user experience 
+            using an email verification process as an example. In a synchronous way, user sents their credential
+            get the necessary information and send that to a third party email provider to send the email to the user. 
+            save user credentials 
+
+            now what happens when the email provider is down
+                without proper error handling, the entire request fails when it is only the email section
+                user has to keep trying until it succeed, this is a bad experience for the user. 
+
+            using a background job. 
+                when the user sends their credential, we get all the necessary information need for the verfication. 
+                serialize it and put the task on a queue. 
+                respond back to the user. 
+                when the task fails, the tasks is retried. 
+
+                Retry mechanism 
+                    Expotential backoff 
+                        a mechanisms where each time the task fails, we increase the time is should be retried. 
+
+    Advantages of background task processing 
+        1. Retry mechanisms for task prone to failing 
+        2. Improve user experience - faster response time as we offload time consume, and non critical task to a seperate process 
+
+
+    Examples of background jobs 
+        1. sending emails
+        2. processing images or videos resize image into different formats, different video resolutions
+        3. generating reports
+        4. sending push notifications   
+
+
+    Kinds of background tasks 
+
+        1. One off tasks - eg sending email
+        2. Recurring tasks - Tasks that have to be executed periodically eg sending daily, weekly reports 
+        3. Chained tasks - Tasks that depend on each other. 
+        4. Batch tasks - Tasks that trigger alot of other tasks 
+
+
+    Design consideration when working with tasks queue 
+        1. Idempotency -  tasks has to be designed in a way that they can be safely executed multiple times without causing side effects 
+        2. Error handling - robust error handling system 
+        3. Monitoring -  proper monitoring track status of tasks in the queue, # of success, failed complete view of task management system
+        4. Scalable - design that it scales, design some we can add more consumers 
+        5. Ordering
+        6. rate limiting . if tasks interact with other service, we have to implement rate limiting not to overload those service
+
+
+    Best practices 
+        1. tasks should be small and focused 
+        2. avoid long running tasks 
+        3. use proper logging and monitoring 
+        4. monitor queue length and worker health
+
+
 
