@@ -4566,3 +4566,53 @@ FULL TRANSCRIPT
 
 
 
+Full text search with elastic search 
+    Scenario 
+        You are tasks to implement a search api. With a relational database, you most likely write this query 
+        get user_input and write this query
+
+        SELECT * FROM products 
+        WHERE name ILIKE user_input OR description ILIKE user_input; 
+
+        but your products keep increasing and now your response increase from 300ms to 30secs.  
+
+    Now you are tasks with these new requirements. 
+        1. Want the search queries to be faster. 
+        2. Can we make the search smarter by showing relevant results faster.  eg search for a laptop, shows macbook first
+        3. accomodate typing errors in search like a typo like labtop should return laptop results. 
+
+    Problems with relational database with proper indexes and extensions
+        1. Without proper indexing, the db will sequential check if every product match the search query, increasing latency as the product list grows 
+        2. The relational database has not concept of relevance hence list are in any order. 
+        3. query with ILIKE does not accomodate typos.
+
+    Elastic search 
+        Is one of the teechnologies developed for full text search. 
+
+        Elastic search use key technologies like inverted index to improve search queries. Inverted index keeps track of words where the appear in each item.
+
+        Inverted index provide 2 huge advantages 
+            1. Fast search results 
+            2. Relevance using BM25 algorithms 
+
+        Advantages of Elastic search 
+            1. Fast search results 
+            2. Relevant results based on query
+            3. Typo tolerance
+            4. Log managment ELK stack
+
+        
+
+
+    
+
+
+
+        
+
+
+
+
+
+
+
