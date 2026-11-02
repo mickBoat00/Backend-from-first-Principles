@@ -4606,11 +4606,198 @@ Full text search with elastic search
 
     
 
+13. Error handling and building fault tolerant systems 
+
+    Errors are a normal part of building applications. 
+
+    Database queries will sometimes  fails 
+    External apis queries will sometimes timeout 
+    Your user will sometimes send bad data which will break your apis if youre not ready for them 
+
+    How does our application handle them when they occur
+
+    Types of errors a backend engineer might encounter
+
+        1. Logic errors 
+            Are the type of error that do not crash application but produces expected results. 
+            eg an ecommerce app with discount feature that leading to a negative shipping cost.
+            lose money per every order.
+
+            what are some of the cases 
+                1. misunderstand requirement
+                2. implement algorithms incorrectly 
+                3. do not think about edge case
+
+        2. Database errors
+            These errors can break application because backend heavily relay on databases
+
+            Ranges from 
+            connection problems - run out of connection pools, db overload
+            constraint voliation - eg unique constraint error 
+            query errors 
+
+        3. External service errors 
+        eg email provider, payment platforms, cloud storage, auth providers. 
+        each is a point of failure 
+        service outage going out or being rate limited 
+        should have fall back like if redis is down inmemory caching 
 
 
+        4. Input validation errors 
         
 
 
+
+Configuration management 
+
+
+Logging, monitoring , observability
+
+    why do we need these 
+        Our application these days run in a distributed environment, diff servers, regions, with user 
+        we need practices, tools and methodologies to keep track of what is happing in all our services 
+
+
+        logging record important, suspicious, security related events happening in our applications with some metadata 
+        like user id, latency, methods was trigger. 
+
+
+        Monitoring to keeping  track of the state of all our applications and different components of our backend application 
+        servers cpu memory, how many request per second, database connections 
+
+        Observability
+            1. Logs
+            2. Metrics
+            3. Traces 
+
+
+
+Graceful Shutdown
+    Scenario
+        We are in the middle of processing a request, a critical transaction and suddenly, our server needs to restart for a deployment 
+        What happens to the request? Does it fail abruptly? Does payment get lost? etc
+
+    Solution 
+        Graceful shutdown. We want to stop our server gracefully not abruptly. Using an analogy where a bank is closing for the day. They does not kick out every one out instantly that is a bad manners. But they do it in a good mannered way. 
+
+        We do not want the current requests processing to under abruptly so we teach our servers good manners which is graceful shutdown,
+        
+    How does graceful shutdown work.
+        application is a process 
+            Our backend application is running on the server as a process. 
+            Every process has a lifecycle, when they start, they are running and they are stopped. 
+
+            When the OS decides is time to stop your application, it does not just kill the process abruptly, 
+            It follows an established protocol of communication. 
+            OS tells the process its time for you to stop follow these process and stop. 
+
+        interprocess communication
+            The communication happens through signals. Important concept in unix os, most servers are unix based. 
+            Signals is used for inter process communications (IPC). 
+
+            Our application creates handles for these signals so can recieve the communication and know what to do.
+
+            Signals 
+                1. SIGTERM
+                    SIG - signal TERM - terminate 
+
+                    A polite way the os ask our application to shutdown. It means could you finish up and leave. 
+                    This signals give the app or process to complete whatever it is doing and leaves. 
+
+                    Application process these things after a sigterm 
+                        1. Stops recieving requests / connections and finish existing requests. 
+                        2. Cleans up resources 
+                            any system resource the application acquired during execution has to be let go 
+                            resources like file handlers, network connections (tcp connections from clients ), 
+                            database connections etc 
+
+                            without clean up you will run of memory
+
+                        3. Exit 
+
+                    what application uses this signal 
+                        Deployment systems 
+                        Process managers 
+                        Orchestration platforms 
+
+                    why is it important 
+                        If backend is not implemented in a way to gracefully handle signterm, it will get a sigkill signal that ends everything abruptly.
+                        
+                        Good thing is most frameworks handles this signal for us.
+
+                2. SIGINT 
+                    user initiated signal where the user price Ctrl + C. A graceful shutdown initiated by the user as in the developer
+
+                3. SIGKILL
+                    These signal ends everything abruptly. It cant be caught and ignored by our application. application cant register some handler to do a clean up. 
+
+                
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Graceful shutdown 
+    Middle of processing critical payment transaction and suddenly your server needs to restart
+    for a deployment 
+
+
+    someone push to production and server need to deploy itself
+
+
+    techniques 
+        zero downtime deployment - exisiting server does not go down before new service is ready 
+        but old server has to shutdown before 
+
+    solution 
+        we want to stop server gracefully not a abruptly 
+
+    teaching our server good manners, like we went u have to close the door at 9pm cos so u kick everyone out of the house forcefully. that is bad 
+
+
+    Graceful shutdown 
+        Process lifecycle management
+            my backend is an application which will run in the computer as a process
+            every process has a lifecycle 
+            born when the process starts, live while the process is executing 
+            die when the process is terminated. 
+
+
+            when an os decide its time for a process to stop running. it does not just kill the process 
+
+
+            it follows an established protocol of communication
+            it time for u to stop we are going to follow this proces 
+
+            signals 
+
+
+        application has handlers listening for signals from the os
+
+        the os sends these signals to shutdown. 
+        SIGTERM - signal terminate
+        if app is process a bunch of requests 
+
+
+        finish processing those requests 
+        clean up resources 
+        exist
+
+        this signal is used by deployment systems process managements , orchestration platforms 
+
+    
 
 
 
