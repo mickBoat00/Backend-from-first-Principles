@@ -4803,3 +4803,304 @@ Graceful shutdown
 
 
 
+
+Scaling and performance
+    Perfomance 
+        What do we mean when we say a system is fast? How can we say a system is fast. 
+        There should be a measurement unit to measure performance instead of just saying the system is "fast". 
+        That unit is latency 
+
+        Latency 
+           
+            Latency is the unit to numerical measure the performance of our system. Latency is the time it took to get a response for a request.
+            Latency is not a single number. In real world, latency for the same endpoint can vary due to alot of factors like the server being idle or not, caching etc.
+
+            Will getting the average latency within a timeframe be a more reasonable measurement? No
+
+            Variation are very important when dealing with latency, because say we measure 1000 requests and the average is 100ms but 99% completed in 50ms and the 1% was 5sec. The 1% represent real user having terrible experience . 
+            Avg blinds us to the insights that some users are having terrible experience. Hence average latency is not a good measure of performance.
+
+            Percentile
+                This gives us the variations. eg 
+                P90 = 500ms means 10% of users experienced 500ms latency, the 90th lower.
+                P99 = 2s means 1% of users experienced a latency 2s and the rest were below that. 
+
+                mostly backend engineer focus on P99 and P95 latency. because not only do we care for unhappy user. Depending on the endpoint,
+                the long request might have triggered our most complex business logic and they represent our most 
+                valuable customers. eg A user making payment might generate more complex db queries or business logic having more latency than the rest. 
+
+        Throughput 
+            latency tells how long an individual request takes. 
+            How many request our system can handle in a given time period. measured by req/sec req/min
+
+            reason its important 
+                with few req / sec you could have impressive latency but as the reqs increases ur latency can be more 
+                it helps answer very particular and real world questions 
+
+                Answering the question  like can our system handle traffic spike of black friday, 
+                how many concurrent users can we support? how many req/sec can we support
+                before we start needing more resources 
+
+
+            As throuhput increases, latency also increases 
+        Low utilization low latency
+            Analogy go to ice cream shop since your are the only one your order is processed immediately. say 2mins
+            now you go back again. this time there are order in line for u and the shop takes an order 
+
+
+            when the utilization of cpu, memory is low latency is very low. as more requests comes, each wait for the one ahead of it in a queue the wait time is long 
+
+
+        Uitlization is another metric 
+         percentage of computing resource cpu memory that is currently at use 
+         0% - system is idle 
+         100% - maxed out can do anything use
+
+
+         Relation between utilization and latency 
+            more utilization, the more latency grows exponentially 
+
+
+            we cant run our system at 100% utilization because our system will crash, traffic burst can occur when we need a good buffer from 50 - 80% utilization
+
+
+
+Scaling and performance in pratice real life 
+
+by Arjay https://www.youtube.com/watch?v=GFtFIxrAjIs&t=390s
+
+
+    Application 
+        Build an small twitter like api with 4 endpoints 
+            1. GET /feeeds
+            2. GET /posts/:id
+            3. POST /posts/:id/like  jwt
+            4. POST /posts jwt
+
+        Deploys on a $12/month server with these application 
+            server 1vCPU, 2GB RAM
+            1. Nginx 
+            2. backend in node 
+            3. postgresql (tuned for available memory)
+
+        In the postgresql 
+            seeds 50,000 users, 500,000 posts, 2M likes 
+
+        Load testing 
+            traffic pattern 
+                1. User loads the feed
+                2. Scrolls for 3 - 7 seconds (Wait)
+                3. Opens one post 
+                4. reads through it for 3 - 8 seconds (Wait)
+                5. Goes back with 15% chance of liking a post 
+                6. 2% chance of writing a post 
+                7. look at the feed for 5 - 15 secs (Wait)
+                8. Repeat the entire process again 
+
+            generate the load for the traffic pattern with k6 load generator  
+
+            Success thresold 
+                p95 500ms
+                p99 1ms 
+                error rate <1%
+
+            Stimulate traffic pattern with virtual users for 
+                server 4vCPU 8GB, $0.13 / hour in same datacenter as app server
+                latency < 1ms
+
+            
+                users, throughput req/s, p50, p95, p99, error rate, cpu utilization, result 
+                1000 users, 83 req/s, p50 = 5ms, p95 = 19ms, p99 = 50ms, error 0%, cpu = 39% , pass
+                2000 users, 166 req/s, p50 = 6ms, p95 = 161ms, p99 = 276ms, error 0%, cpu = 67% , pass 
+                4000 users, 266 req/s, p50 = 2.7s, p95 = 4.5s, p99 = 12.7s, error 0.01%, cpu = 99%, failed 
+                3000 users, failed 
+                2500 passed 
+                2750 failed
+
+
+                run 2,500 users for 3 run case for 5mins each
+                2500 users, 232 req/s, p50 = 11ms, p95 = 288ms, p99 = 775ms , error 0%
+
+
+                CPU utilization  
+                    CPU was the one take was over utilizated as users increase 
+
+                        2,500 users, node 38%, postgres 30%, Nginx 6%, cpu 80%
+                        3,000 users, node 43%, postgres 35%, Nginx 7%, CPU 91%
+                        4,000 users, node 53%, postgres 38%, Nginx 8%, CPU 99%
+
+                        request arrive faster than cpu can finish and request starts waiting.
+
+                Optimization 
+                    Repeated works GET /feeds return same json over and over 
+
+
+            Before optimizations 
+                hammers GET /feeds many request as possible 
+                280 req/s
+
+            Optimization 
+
+                Repeated works 
+                    GET /feeds returns same like over and over again
+
+                    Solution 
+                        cache GET /feed for 1s 
+
+                        before cache, /feed = 280 req/s 
+                        inode inmemory cache , /feed = 1200 req/s 
+                        nginx cache, /feed = 10,8000 req/s  + 
+
+
+                    virtual users 
+
+
+                    
+
+
+
+                on the same hardware 
+
+                Repeated work 
+                    GET /feed get 20 newest posts 
+                        repeated work 
+
+                        GET /feed 280 req/s before caching 
+
+
+                    1. In memory cache node 
+
+
+                    get newest 20 posts from GET /feed
+                    same json over again 
+
+                    caches feed 1s in memory in node 
+
+                    Caching 
+
+                        v2 in memory cache 
+                            GET /feed 1s 
+
+                    median of 3x 5 minute run
+
+                    before caching 
+                        4000 users, 266 req/s, p50 = 2.7s, p95 = 4.5s, p99 = 12.7s, error 0.01%, cpu = 99%, failed 
+                    after caching 
+                        4000 users,  p95 = 264ms, p99 = 99.8ms , passed 
+
+                    trade off 
+                        caching makes debugging harder
+                        but easiest way to get performance boost 
+
+
+                    2. cached inside nginx itself 
+
+
+
+                        
+
+
+
+
+
+
+                    
+
+
+
+
+
+
+
+
+             
+
+
+        
+
+
+
+
+
+$12 server 
+    1 CPU with 3 app Nginx, backend and postgresql
+
+    how many people can the server support before everything breaks 
+
+        methodology for testing 
+
+            server specs 
+                1 vCPU
+                2GB RAM
+                50GB SSD 
+
+            architecture
+                request -> nginx -> backend -> database used 25% of memory
+
+                backend api 
+                    GET /feed
+                    GET /posts/:id
+                    POST /posts/:id/like
+                    POST /posts
+
+                database 
+                    seed 50_000 users, 500_000 posts, 2M likes 
+                    size 357 MB 
+
+            vritual user 
+                or how a user will behave using the system 
+
+                    1. Opens a feed GET /feed 
+                        wait a few seconds  random(3, 7) secs 
+                    2. clicks a post GET /posts/:id
+                        sleeps random 3 - 8 secs
+                        random number if less than like probability
+                        likes the post 15% chance 
+                    3. random number if less than post probability POST /posts/:id/like 2% chance 
+                        create a post POST /posts
+
+                    5. wait around 5 - 15 secs and repeat again 
+
+                every user has an account with presigned jwt for auth
+
+
+            load testing tool k6 
+                how the load is generated 
+
+                    rent a larger server to generating the load 
+                    4vCPU 8GB ram 
+                    $0.13 / hour for 4 hours = $0.60
+
+            the two server in the same datacenter nyc1 
+            latency like < 1ms 
+            measures performance of the application itself 
+
+
+
+            load 
+                thresold as success 
+                    p95 should 500ms 
+                    p99 should be 1s 
+                    less than 1% of requests can fail 
+
+
+            load testing 
+                
+
+            2500 users passes all thresold below 
+
+        run the test for 5mins with the 2500 users 
+
+        run 5 runs passed 
+
+
+    less 
+    cpu broke 2500 users 
+    cpu utilization 80% 
+    request arrivee before cpu can 
+
+
+
+                
+
+                
