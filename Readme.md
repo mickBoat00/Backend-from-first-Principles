@@ -4851,17 +4851,290 @@ Scaling and performance
             when the utilization of cpu, memory is low latency is very low. as more requests comes, each wait for the one ahead of it in a queue the wait time is long 
 
 
-        Uitlization is another metric 
-         percentage of computing resource cpu memory that is currently at use 
-         0% - system is idle 
-         100% - maxed out can do anything use
+            Uitlization is another metric 
+            percentage of computing resource cpu memory that is currently at use 
+            0% - system is idle 
+            100% - maxed out can do anything use
 
 
-         Relation between utilization and latency 
-            more utilization, the more latency grows exponentially 
+            Relation between utilization and latency 
+                more utilization, the more latency grows exponentially 
 
 
-            we cant run our system at 100% utilization because our system will crash, traffic burst can occur when we need a good buffer from 50 - 80% utilization
+                we cant run our system at 100% utilization because our system will crash, traffic burst can occur when we need a good buffer from 50 - 80% utilization
+
+
+        Finding the bottleneck 
+            When we say our application is slow, we means something specific within our application is causing the slowest. Finding that thing is called identifying the bootleneck. 
+
+            we something jump into solution without finding the specific part of our application causing the bottleneck
+            eg  
+                Add caching because it improves latency
+                Database is the problem, let upgrade to newer version
+                if server, lets add more server
+
+            something we get lucky but something the actual thing cause the bottleneck is ignored. 
+
+                eg we have an endpoint GET /products/:id 
+                    we realized it is slow 
+                    so we add redis for caching 
+                    but it is still slow 
+
+                    hence we dive deep into the problem and add timing measure in code 
+
+                        discover DB query 10ms 
+                        Redis cache 5ms 
+
+                        logging function that sends logs to a remote server synchronously
+                        taking 500ms 
+
+                        we realize the database was not a problem 
+                        problem was the synchronously nature of logging 
+
+                when talking about performance never guess always measure 
+
+                There can be various components in our api flow which is causing the actually latency 
+                most we just blame our database , indexing strategy, caching strategy
+
+                instead of measure each component of our api workflow and finding out the root cause 
+
+                actually corpirate might be 
+                    json, xml serialization step 
+                    response payload is huge 
+
+                lesson is without measuring we show not guess which part of our component is causing the latency 
+
+                Measurement is important in performance and scaling 
+
+
+
+
+                Tools for measurement 
+                    1. Profiling 
+                        Measuring where your system spends its time. 
+                        Measure thing like which functions are executing, when they started executing
+                        output of profilers can be very over helming 
+
+                        you may assume the bottleneck is your complex business logic the cpu bound task 
+                        but actually time is serializing to JSON
+                        database queries but actually culprit was calling external api in a loop
+
+                        Profiler may not be good as IO bound tasks 
+                            DB queries, file handling , serialization , external api calls , queues 
+
+                        more useful at CPU bound tasks 
+
+                    2. Distributed tracing 
+                        Flow a request as it goes through your system. 
+                        it records what time it entered a particular component 
+                        might get 2ms in business logic 800ms on database query 
+
+
+            Bottlenecks 
+                1. Database
+                    the do the hard work (
+                        store data on disk durably, 
+                        concurrent reads writes
+                        , execute queries across millions of rows ) in our application hence can be a source of bottleneck 
+                    but cannot be blamed for every every issue but there a something to i 
+
+                    common low hanging fruit perfomance issue with databases 
+                        1. N + 1 query 
+                            scenario 
+                                list 20 blogs 
+                                but each blog has authors and details we have to fetch 
+                                    so for each blog we make a call to fetch the author 
+
+                                20 api calls
+                                to show a single page 
+
+                            problem 
+                                each db query has an overhead because network is involved
+                                to transmit request response 
+                                for the tranmission tcp connection
+
+
+                            DB works
+                                parse query 
+                                plan query execution 
+                                execute the query 
+                                return the results back 
+
+
+                            solution 
+                                1. Fetching data in bulk 
+                                    many n api call for author details 
+                                    collect all author id and fetch in a single request
+                                    1 query to fetch all blogs 
+                                    another for the authors 
+
+                                    n+1 probllem happen on the server level using orm 
+                                        post = db.select.post()
+                                        for post in post 
+                                            db.select.author(id = post.id)
+
+                                        in modern orm like django suing select_related 
+                                        to fetch all data related to foreign key relationships 
+
+                                        instruct our orm to do 1 or 2 queries instead of 
+                                    something to look out for when using orm and database
+                                    try to use joins, bulk fetch methods to avoid that 
+
+                        2. Indexes 
+                            Common problem is the lack of indexes
+
+                            without indexes 
+                                there will be a full table or sequential scan for all queries 
+                                leading slower response times which can be improved.
+
+                            indexes is a data structure that maintains a sorted copy of all value of a column with a pointer to the row
+
+                            eg of such data structure is B tree 
+                                with index it knows which row to fetch
+
+
+                            things to note about index they are not free. they come with some cost 
+
+                                1. Storage space 
+                                    Each index takes some amount of space . hv to store the sorted datastructure aand its pointer
+                                    the larger the table the more space it needs
+
+                                2. Updates each time you do an insert, update, delete to the table.
+                                    To keep the database in sync each time you do a write operations, the indexes has to be updated. 
+
+                                    Which is why is not advisable to index very column because each columns indexed has to be updated and we will see heavy rise in latency for all our write operations 
+
+                            how to choose columns to index
+                                by default the primary key field of a table is indexed 
+
+                                when we know the column will be used in our queries 
+                                when we are not sure the column is going to be part of many queries, joins 
+                                we should monitor our application 
+                                    Our logs , and traces 
+                                    if
+                                    with distributed tracing we find this query has latency because of the absence of an index 
+
+
+                                alot of database offer a tool called explain analyze 
+                                    database give you details about the query plan from start to ending 
+
+                                takes the query plan and find what columns we are doing full table scan or sequential scan 
+
+
+                            composite index and covering index 
+
+                                Composite index is indexing multiple columns 
+                                    eg if we frequently query by userid and created at 
+                                    this can help optimize the query instead of creating seperate indexes for them 
+
+
+                        3. The cost of connections 
+                            When you start to scale your backend, we realize database connections are not as cheap as we thought 
+                            In local development we do not even think about database connections in relation to performance overhead 
+
+                            database connections can be expensive at scale 
+
+                            database connections
+                                Backend establishes connection to the database through tcp connection
+                                TCP is a 3 way handshake process syn syn ack ack
+                                It performs any kind of authentication
+                                set up session state for the data access 
+                                database allocate some memory for the connectionn 
+
+                                all these things happen when backend establish a connections
+
+                                if the database establish a new connection for every database queries and closes when it is done with it 
+                                the cost of establishing database connection, we will keep paying again and again 
+                                with latency 
+
+                                2. database connection limit 
+                                    Postgres has a limit 500 - 600 depending on depending on how large or memory or cpu u have 
+
+                                prevent the problem of exhausting connection limits and paying the cost of connection each time we make a db query 
+
+
+                                Connection pooling 
+
+                                    solves the 2 problems 
+
+
+                                    how does it help 
+
+                                        instead of establishing new connection with db every time 
+                                        backend interact with a connection pool 
+                                        when backend needs to interact with database 
+                                        backend ask to borrow a single connection from the pool 
+                                        get that connection and use it to make the database query 
+                                        get the results and give the connection back to the pool 
+
+
+
+                                types of pooling pattens 
+                                    internal pooling
+                                        db driver itself maintains a pool of connections 
+                                        backend interact with that pool 
+                                            to get a connection 
+                                            make db queries 
+                                            and give it backend 
+
+
+                                            internal because it is specific to our server 
+
+                                        since modern web application we do not have a single server 
+                                            we have multiple servers
+
+                                        for each server since we are using internal pooling, there will have a pool of connections 
+
+
+                                        problems with that is
+                                            with our auto scaling infrastructure new servers get added, and each maintain a pool of connections 
+
+                                            the issue database can handle a limit number of connection 
+                                            if the sum of all servers connection exceeds the limit 
+
+                                            the database is going to crash 
+
+                                        reason we have external poolers 
+
+                                    external poolers 
+
+                                    we have a traffic spike and our auto scaler creates more instances for the servers 
+                                    configure an external pooler with maintain a number of pooler
+                                    all instances of our server interacts with the pooler 
+
+
+                                    optimize our queries 
+                                    added appropriate indexes 
+                                    configured connection pool 
+
+                                    but still the database is the bottleneck, we look into caching .
+
+                                    
+
+
+                        
+
+
+
+
+                        
+
+                                
+
+
+
+
+
+
+
+
+
+
+                        
+
+
+
+        
 
 
 
@@ -5101,6 +5374,37 @@ $12 server
 
 
 
-                
+Request failing python 
+
+    request waiting more than 5s for database connection from pool (10 connections)
+    and timing out 
+
+    database driver 
+    connection pools 
+
+
+    sqlite 
+        no database process 
+        library link to a file 
+
+
+        how app process interact with database process 
+        app get a connection from the connection pool 
+        app sends sql over the connection 
+
+
+    Postgres wakes up, parses , plans, runs 
+
+
+    application process 
+        database driver 
+        postgress 
+        database driver 
+    application
+
+
+
+
+
 
                 
