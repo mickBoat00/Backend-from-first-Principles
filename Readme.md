@@ -5109,7 +5109,450 @@ Scaling and performance
 
                                     but still the database is the bottleneck, we look into caching .
 
-                                    
+            3.  Caching 
+                If we do all the database optimize and it is still a bottleneck then we look into caching 
+
+                Store the result of an expensive operation in this case the db in a caching solution 
+                and next a request comes we returned the cached response
+
+                problems of caching 
+                    1. Cache invalidation
+                        a. time based invalidation
+                            decide before hand we want to keep the cache valid for a certain amount of time 
+
+                            figuring the optimal amount of time for our expiration 
+
+
+                        b. event based invalidation
+                            Every time we make a change to the original data. in the same endpoint we invalidate the cache 
+
+
+                where caching lives 
+                    1. Local caching 
+                        Instead of storaging in external service, we store it in memory on the server memory 
+
+                        problem 
+                        Cache inconsistency 
+                            is if you have many server, it server will have its own local cache and you will have cache inconsistency  
+
+
+                    2. Distributed caching 
+                        use external service like redis, memcache valkey etc 
+                        do not have problem of cache inconsistency anymore 
+
+                        cons if getting value from cache requests a network round trip causing some amount of latency 
+
+
+                    3. tier caching
+                        a small local cache for hottest data 
+                        a distributed cache 
+
+                caching patterns 
+                    Depends on the access pattern our requests are, we choose one of these patterns for caching 
+
+
+                    1. Cache aside 
+                        follow 
+                            request comes 
+                            checks the cache if cache miss 
+                            query db for result 
+                            cache result and send response 
+
+                            if there is an update, to the cached entity 
+                            deletes the entity from cache 
+
+
+                    2. Write through 
+                        Instead of deleting entity in cache each time it is updated, 
+                        this updates the database and cache at the same time 
+
+                        adv never a cache miss 
+                        cons write operation takes few ms more 
+
+                    3. Write behind 
+                        problems of latency for writing at two place in the prev approach 
+
+                        updating caching layer and return the response
+                        then asynchrously update value in database 
+
+                        problem is db operation fails caching and db are in inconsistent state
+
+                Cache hit ratio
+                    % of request that was successful to get information they want from our cache layer 
+
+                    if we have a lower hit rate, it means your caching algorithm has an issue 
+
+                    factors that affect cache hit ratio
+                    1. ttl large or low affect cache hit ratio
+                    2. cache size large more hits
+                    3. data access pattern do not understand user behaviour 
+
+
+    Scaling 
+        Application runs on server 
+        as traffic grows the server and its computing because insufficient to handle the growing traffic 
+        hence we need more capabilities 
+
+
+        2 approaching of scaling 
+
+            1. Vertical Scaling 
+                Scaling up moving to a more powerful server with larger computing resource more cpu core, memory, disk storage, network cards etc
+
+                advantage
+                    simple nothing change except the server 
+                    avoid operation of managing more servers
+
+                cons 
+                    there is a limit on a the computing power of a server
+                    can reach the biggest computing power available 
+
+            2. Horizontal scaling 
+                add instances of the same server. multiple servers for user base 
+
+                adv 
+                    more server more request to handle 
+                    redundancy if one server fails, others can handle the request
+                    geo distribution add server close to user 
+                        and a load balancer depending on the user request location, 
+                        pass to the nearest server
+                        min amount of latency 
+
+                dis 
+                    complex of managing servers
+                        how to distribute request among servers 
+                        new element load balancer, and load balancing algorithm 
+                        new element more complex 
+
+                        sync user updates 
+                        one server goes down, route request to other services etc 
+
+
+                properties 
+                    Statelessness 
+                        Horizontal scaling is possible only because of statelessness 
+
+                        Meaning one server does not contain any kind of data exclusive to the server.
+                        Server is stateful means the server hold information exclusive to that server. 
+
+                        eg session based auth
+                            we have multiple servers 
+                                server store session info in memory and 
+                                and when dealing with stateful authentcation 
+                                each server store session id in memory
+
+                                the idea is that if a user authenticate with one server 
+
+                                and the same user request is directly to a different server 
+                                they will get unautht 
+
+                            2. file storage 
+                                instance A save the file in its own storage
+                                next request on instance C file does not exis
+                                to support our horizontal scaling arch 
+                                upload to s3 
+
+                Load balancer 
+                    mandotoy component of horizontal scaling 
+
+                    distribute request among main instances of the application
+
+                    LB algorithm 
+                        algorithm to decide which server to send request 
+
+                        1. Round robin send request in rotation order 
+                            best if the servers computing resources are the same 
+
+                            Weighted round robin
+                                send more request to the server will large computing resource
+
+                            robin can not decide intelligently to send request that will require more computing 
+                            to the powerful server
+
+
+                        2. Least connections 
+                            checks which server hold the less amount of active connections and send to that server 
+
+                            since http protocol requires tcp connections
+                            help prevent bombard server handle a compute intentive request 
+
+                            connection makes lb intelligent decides which server gets the next request
+                            weight heavy recieve twice the connections
+                        3. Leat response times etc                         
+
+                    Health check 
+                        in a situation where a server crashes and the lb use an alogrithm 
+                        it will still send the request to each server hence client requests to crashed server will fail
+
+                        LB solve the problem of a server crash and client request failing through health checks 
+                        keep send its own request to all server instance and expect a success request 
+                        if does not get a successful. request will not be sent ther
+
+
+            2. Database scaling 
+
+                database scaling can be done with the way we do for server 
+                because each database stateful part of our architecture     
+                each database hold alot of data in their local storage 
+                that database must be consistent
+                    data sent back should be the same as other instances send the data
+
+
+                scaling database 
+                1. Read replicas 
+                    eventually if we have a single database server, it will run out of resource 
+                    we cant just add more instance there will have data inconsistency 
+
+                    primary database 
+                    and other secondary instances 
+                    secondary instance will only handle read requests 
+                    secondary instances are read replica can not write back to these instance 
+
+                    adv 
+                        low load for primary database 
+                        reduce latency as read replica are close to users
+
+                    tradeoff 
+                        consistency 
+                            replication lag user update name went to primary but they refresh the page 
+                        before the change reflect a read replica 
+                        they do not see their updates 
+
+                        solution 
+                            1. read queries goes to primary instance after the write
+                            2. track replication lag block read queries after the replication is complete 
+
+                2. Sharding partitioning 
+                    sharding key decides whether a data should live 
+                    multiple with each holding a part of the data.
+
+
+                current trends with distributed databases 
+                    neon disributed database, planetscale and other platform distributed database 
+                    handle all complexicity with database scaling sharding replication, security
+
+
+            3. Content Delivery Network 
+                why does cdn matter
+                    limitation of our world 
+                    light travel at the spped in fibre optic cables in 200000 km/s 
+                    that is the speed of the internet and we can't cross that cap 
+
+                    If a request is made from tokyo to a server in virginia us east 1 which is 
+                    20,000 km, that means it we take 100ms to get the request, backend  process the request
+                    and send a response back with is also 100ms 
+
+                    no matter the optimization we do on the backend we have to pay that geographically latency cap 
+                    of 200ms to send and recieve a response. 
+
+                    when the request is recieved at the backend 
+                        1. Routing layer routes the request to the appropriate handler
+                        2. Handler deserializes the request json to native programming language datatype 
+                        3. Deserializing can take some thing depend on how large the payload is 
+                        4. There is some form of input validation 
+                        5. services layer is called to run the business logic
+                        6. running the business logic can involve dealing with databases or external apis
+                        7. distance from application server and database or external api adds latency also 
+
+
+                    the point is there is some latency a request have to pay due to the geographical distances between the users browser 
+                    and the server 
+
+
+                    CDN solves this issue by caching certain thing of our application close to the users at a global level.
+
+                    Instead of the request traveling all the way to virgina we place a server close the the user at tokyo with our cached content so the geographicall cap is lesser 
+
+                what kind of content can we put in cdns 
+                    1. Static content jss bundles, css bundle, html files, images videos fonts 
+                        they do not can change as often 
+                        when we deploy our frontend application, that becomes a bundle of js, css, and html files 
+                        when user request our frontend application. instead of going to the primary the requested frontend is served by a cdn 
+
+                    2. API response
+                        can cache a few api responses that do not change often 
+                        when using cdns there are techniques for invaliding the cache or purging the cache 
+
+                    3. Security 
+                        a commonn kind of attack to our server ddos
+                            attacker spins up multiple computers and uses those computers to send numerous request to our server 
+
+                            when our server recieves huge numeber of request
+                                1. our latency increases more request to process for the cpu
+                                2. server will crash 
+                                3, if we have autoscaling configured, more and more server will be spinned up 
+                                    incuring huge cloud bill
+
+                        with cdn configured all traffic goes to our cdn before our server. 
+                        the cdn works as a security layer. 
+                        and the cdns have advanced technologies to detect ddos andn block those request
+
+                        this traffic does not do any damage to your servers because there is an addtional layer 
+
+                Edge computing 
+                    We have users across various regions around the work 
+                        and we have our cdn nodes in these regions 
+                        the nodes are edges nodes because there are at the edge of the network 
+
+                    traditional cdn are used as a caching layer for send static contents like 
+                    js,css, html , image, video etc. 
+
+                    edge computing means there is some form of processing . can be used for authentication 
+                    verification 
+                    cant move our entire backend to edge computing because they use a limited computing resources 
+
+            
+            4. Asychronous processing 
+                In most of our backend operations
+                    user sends a request, our backend does some processing and saves unto the database.
+                    we only respond when the save has happended
+
+                    there are some operations that do not have to be sync 
+                    eg sending user email using external api. we does not have to wait for a response from the external email provider 
+                    what if the fail but weve already responded to the user
+
+
+                    example of such tasks 
+                        sending email 
+                        sending notification
+                        video processing 
+
+
+
+                    user can perform a retry from the ui 
+
+
+                    use queue to tasks on the queue 
+                        producer,  message queue , consumer 
+
+                        Consumer can be in the same code 
+                        can be seperate some when you have alot of traffic we can scale it  
+
+            5. Microservice architecture 
+
+                When you ask how to scale your backend application, some one will advice divide your application in multiple independent services 
+
+                Monolith 
+                    Is a application which is considered as a single deployable unit 
+                    all functionalities are different files in code base , interact and function together
+                    and runs as a single process 
+
+                    adv 
+                        simple to develop, maintain, test and develop 
+
+
+                    why would we consider something else 
+
+                        Microservice are not scale the performance of your application but more about scaling the companies team 
+                        scaling human interactions not the performance of the application 
+
+
+                    problems with monolith
+
+                        1. if working in a large team 
+                            large can be subjective 100, 200 developers working on the same application 
+
+
+                        2. deployment dependency 
+
+                        3. scaling invidual module that 
+
+                        4. tech stack currently programming language not efficient for certain tasks 
+
+                    tradeoff of microservice 
+                        1. Network all code was deployed as a single process in monnolith and function calls. dividing into different service now require network calls adding latency 
+
+                        network comes with failures 
+                            have to worry about how to handle failure 
+                                how to retry 
+                                how to timeout 
+
+                        2. Debugging becomes alittle complex . request move from one service to the service
+                        we need to architecture system in a way to make debugging easier. 
+                        eg distributed tracing 
+
+                        3. Data consistency 
+
+                Why microservices 
+                    1. Large teams 
+                    2. scaling need where one service needs to scale differently 
+                    3. technology needs if you need to use different technology for the microservice need 
+
+            6. Serverless 
+
+                traditional we get a vm from a cloud provider, configure it. install the necessary software nginx, docker, get your code and run them 
+
+                challenge of this model
+                    capacity planning you need to decide before hand what the capacity of your server should be and also how many servers you will need . hence predict user traffic 
+
+                    if you predict too little and a huge spike happens. server is not able to process such request 
+                    1. it will start crashing 
+                    2. huge latency spikes 
+
+                    provision too much
+
+                    over provision or under provision you experience some kind of loss
+
+                    Auto scaling solution for the problem of under provising or over provising 
+                    drawback of autoscaling
+                        1. time - provision of a new server takes the ff process 
+                            1. boot a new server and operating system 
+                            2. configuring our application
+                                building our code 
+                                fetching the code 
+                                start application in a process 
+                                exposing the process to internal load balancer 
+
+                            all of this take from a few secs to mins 
+
+                            auto scaling might not have enough time to scale as the users increases 
+
+                        2. limits min instance and max instance too low then uder provision problem 
+                        too high huge charge over budget 
+
+                        3. reactive if window of time to scale is less can 
+
+                Serverless does not mean no server. it means we do not have to worry about the machine itself.
+                worry about the operating system, confiuring application to work with os 
+
+                the only thing you have to manage is your code 
+
+                functions that are triggered by an event 
+
+
+                tradeoff 
+                    cold start times because of the nature of how serverless computing works 
+                        there will always be a cold start as comparing to traditional vms 
+                    limits 
+                        limit on how long the code should run 
+
+                    stateless 
+                        vms establish tcp conection with database and holds the active connections 
+                        stateful behaviour with traditional servers 
+        Scaling summary
+
+            always start with a problem 
+                before we start with a solution, we need to understand where we stand with the problem
+                whether your system is slow or not 
+                    and how slow is that
+
+                    you need to measure your system using practices like observability, traces, metrics logs 
+                measure every thing a 
+
+                
+
+
+
+
+
+
+
+            
+                     
+
+
+
+
 
 
                         
