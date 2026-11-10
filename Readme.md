@@ -5547,7 +5547,339 @@ Scaling and performance
 
 
 
-            
+
+
+
+Concurrency and parallelism 
+
+    processing a request at a time 
+    cpu spends 70% of the time waiting 
+    concurrency soves this problem 
+
+
+    parralism is also doing multiple times at the same time
+
+    parallelism is doing multiple things at once
+    concurrency is dealing with multiple things at once  
+
+
+    how does computers do multiple things at once
+        1. threads 
+        2. event loops 
+
+    concurrency feature in any programming languages builds on these two things 
+
+
+One CPU core 
+    1 thread can execute at a time 
+    but can have many threads, just one with be executing at a time 
+
+
+
+OS schedular  
+creates a thread 
+
+
+
+A server with 1 CPU core 
+
+    OS level threads
+        threads are expensive and comes with alot of overhead 
+            creating overhead
+            switching overhead 
+            memory overhead 
+
+
+        
+
+https://medium.com/@yasiffkhan/inside-a-spring-boot-request-threads-security-transactions-system-limits-explained-c32b81a9ebcf
+
+
+
+
+
+Concurrency and parrallelism 
+
+    Our backend server needs to be able to handle multiple request at once 
+    If our server handles just one request at a time all the other request has to wait 
+    or they will get an error leading to bad user experience and lose of paying users. 
+
+    scenario where our server handles one request 
+        user browser makes a request to server
+        recieve the request from our client and we need to process 
+        and to process it we need to make some kind of i/o (network, files, standard input/ output) 
+        most common database interaction
+        wait for the response from the database 
+        send the response back
+
+        the time to wait for the response from the database  approximately 
+            1 - 2 ms in local host 
+            20 - 30 server and db in same availability zone
+            90 - 100ms  different region
+
+
+        while the server is waiting for the response from the database 
+        what is the server doing? going by the premise of our server handle one request at a time. 
+        the server is doing nothing, the cpu is idle 
+
+        quantifying the waste happening 
+            modern cpu can execute 3 billion instruction / sec
+            or 3M instructions / ms 
+
+            if server was idle for 100ms , 
+            it could have executed 300M instructions
+            but since we are process one request at time. 
+            It does 0 instructions
+            we waste 300 million instruction the cpu could have executed 
+
+            quantify it even more 
+                server use 10ms for cpu bound 
+                and wait for i/o for 250ms 
+                this means you server was not using any of his hard 95% of the time 
+
+
+            this is what concurrency tries to solve . more than 70 % of the time is sent on i/o 
+            i/o operations 
+                wait for data base 
+                    external api call email cache 
+                    file uploading downloading  
+
+
+    
+
+    Parallelism 
+        is a server is able to execute multiple instructions at the same thing at the same moment
+        to achieve parrelism we need hardware level support 
+        it needs atleast 2 cpu cores 
+        1 cpu can execute 1 instruction at a moment 
+
+
+    Concurrency 
+        Concurrency tries to solve the cpu idleness 
+        wait we wait for the responses, we can use the cpu for other things 
+
+        doing multiple things at once. we can achieve concurrency with 1 core of cpu 
+        where we start, paused, resume multiple in instructions at any moment of time so it feels 
+        we are doing multiple things 
+
+        most of the things that happen in a typical request response lifecycle are 
+        i/o bound where the cpu is waiting without doing any form of computation
+
+
+
+        for I/O bound tasks one thing which is mandotory is concurrency 
+
+
+    How computers do multiple things at once
+        majorly two ways 
+            1. Threads 
+            2. Event loop 
+        any concurrency feaure in our programming language used these features build on these mechanisms 
+
+
+    Thread 
+        Independent piece of execution by the os 
+
+        when a thread is created, the os does these things
+            - allocates a stack for keeping track of our function call and variables
+            - creates an instruction pointer to keep track of where we are in our execution
+            - os controls a schedular that starts, pauses or stops a thread 
+            - schedular gives a each thread an amount time to do some account of processing in the cpu 
+            - if the time is reached pause the thread save the state of the last instruction it was expecting 
+            - and starts an thread 
+            if the thread performs any kind of blocking operation ie any i/o 
+            os marks thread as block and switching to a different thread 
+
+
+    
+
+
+when a request get to the server
+
+    1. OS controls a schedular which schedules a thread to run that request 
+    2. A cpu core handles a single thread at a particular point in time
+    3. OS schedular give each thread a time slice to do some processing and if not completed it is paused
+    4. OS schedular pauses the thread starts a new thread or resume a paused thread 
+
+    5. each thread is 
+        a. give a time slice to use the cpu 
+        b. allocated a stack for keeping track of its function call and variables
+        c. an instruction pointer to keep track of where it is in execution
+        d. memory like heap, global variables are shared among threads in the same process 
+
+    6. while a thread is executing and performs a blocking operation that is an operation where the cpu is useless that is i/o operations
+        eg logging , network calls to database, external api, redis etc , files. 
+    
+    7. tells os and os makes that thread as blocked and paused, os switches to another thread 
+    8. two threads in a process and share memory like heap, global variables. 
+
+
+    overhead of threads 
+        - Memory each thread has it own stack for function calls and variables
+            size can be in kB, MBs if our backend creates threads per request we can run out 
+            of memory and application crashes 
+
+        - creation overhead 
+            each time our programing language wants to create a thread, it have to make a system call to os kernel 
+            os kernel does alot of things
+            set up stack 
+            datastructure to manage the thread 
+            add to schedular 
+            this can take microseconds to milliseconds 
+
+
+        - context switch 
+            when the schedular want to switch to a different thread 
+             - it has to save current thread cpu registers 
+             - update all kind of book keeping to keep track of the state 
+             - select the next thread 
+             - fetch all the registers, book keeping , state management all of that 
+             all these can take 1 - 10 microseconds 
+
+             as the threads increases this context switching time can go beyonds milliseconds and macroseconds 
+             context switching is not doing anything but maintainable work so wait cpu time not doing the actual work
+
+
+        reason why thread per request struggles in high concurrency requirements  
+
+
+
+Event loop 
+    is does not rely on multiple threads to do multiple things 
+    wih one thread it does multiple things at once
+
+    the key differentation is we cant block the event loop 
+
+        we a request a is doing an i/o operation instead of blocking the event loop thread, 
+        request say i want the result of the i/o with a programming langauge primitive like await. 
+        when the result is back run this callback 
+        i will give up my cpu slice so you can do other things 
+
+        event loop pushes it into a queue 
+
+        for every loop iteration, checks for i/o completion , run callback and back into the loop 
+
+        because of the single thread setup, we can have alot of efficiency with i/o bound tasks 
+
+        in cpu bound tasks the more threads the faster , for i/o bound tasks more thread more context switching and eventually slower 
+
+        programming language 
+
+    tradeoff 
+        you can never block the event loop. if a task 
+
+
+
+handling request in our server 
+
+    Our server is a computer with cpu, memory, disk storage and network card
+
+    in this scenario our has 1 core cpu, some memory, disk and network card 
+
+    Our backend application is running as a process. 
+    A process can have multiple threads 
+    A cpu core can run a single thread at a particular moment in time. 
+    Each thread gives some time slice to use the cpu
+    CPU core gives the illusion of doing multiple times at once by starting, pausing, resuming threads 
+
+    How are request is handled in a thread per request backend process 
+
+        When a request comes into our server and backend process 
+        Our os schedules a thread to handle that request 
+
+        In normal circumstances, the os does not create a thread from stratch to handle the request
+        because creating a thread has some overhead 
+            thread creation overhead 
+                - os has to allocate a stack (memory) for keeping track of the thread's function call and variables 
+                - os creates an instruction pointer to keep track of where the thread is in execution
+                - os allocates the cpu time slice for processing 
+
+        Because of these overhead, there is a pool of threads already created and os picks from the pool to handle the request
+        if there is no thread available in the pool, requests are queued and have to wait. 
+
+        if there is a thread , os schedules to with a time slice for cpu execution. 
+
+        Once the thread is being executed by the cpu to handle the request , the following handles 
+            1. Performs routing logic to map request to a contoller - CPU bound task - Running
+            2. Deserialize json and parse query param, path variables etc - CPU bound task - Running 
+            3. Validate and transform json, query params etc - CPU bound task - Running
+            4. Does some form of i/o operation, most common is database query
+            5. Makes a database query - I/O bound task - Blocking 
+                Database query 
+                    - Get a tcp database connection from a pool 
+                        just like thread pool, there is a pool of database connection created to be used 
+                        because establish one for scratch has some overhead and can cause latency. 
+
+                        if there is no connection in the pool. The request will wait but is it technically in a running state 
+                        Get a connection 
+                    - Serialize query into bytes and send bytes over the tcp connection
+                    - Holds that connection and wait for result to call read() on socket. 
+                    this operation blocks the thread. - i/O bound task - Blocked 
+                        less optimal the database query, the long the connection is out of the pool to be used by other request. 
+
+            6. OS schedular sees thread 1 is blocked, pauses it, context switch to another thread 
+                Context switch comes with some overhead 
+                    when the schedular want to switch to a different thread 
+                    - it has to save current thread cpu registers 
+                    - update all kind of book keeping to keep track of the state 
+                    - select the next thread 
+                    - fetch all the registers, book keeping , state management all of that 
+
+                when the thread is blocked because of i/o without concurrency the cpu will be idle. Now is the time for the cpu core to process another thread because the cpu core handle 1 thread at a particular moment in time. 
+
+            7. After some time network data packets arrives in thread's socker - i/o opertion - Runnable 
+            8. Os schedular eventually resumes the thread to continue 
+            9. Tnread processes the query results - CPU bound task - Running
+            10. Serializes the http response - CPU bound tasks - Running
+            11. send responses 
+            12.  and thread returns to the pool 
+
+
+    because context switching and the operations the os have to perform to maintain the threads stateful 
+    threading is struggles in a high concurrency requirement. 
+
+
+    
+
+  
+
+
+
+
+Reference article
+
+https://medium.com/engineering-playbook/your-java-service-handles-10-requests-sec-heres-why-it-ll-die-at-100-908af05200e7
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+        
+
+
+
+        
+
+
+
+
+    
+
+
+
+
+
+
+
                      
 
 
