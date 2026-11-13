@@ -4731,18 +4731,6 @@ Graceful Shutdown
                 3. SIGKILL
                     These signal ends everything abruptly. It cant be caught and ignored by our application. application cant register some handler to do a clean up. 
 
-                
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -5749,24 +5737,31 @@ Event loop
     wih one thread it does multiple things at once
 
     the key differentation is we cant block the event loop 
+        when request a is doing some database query 
+        instead of blocking and waiting for response from the database 
+        It tells the event loop it wants the result of the query using primitive of our language like await 
+        When we get the result back then  you resume my functionality
+        until then i am handling off the control of cpu execution 
 
-        we a request a is doing an i/o operation instead of blocking the event loop thread, 
-        request say i want the result of the i/o with a programming langauge primitive like await. 
-        when the result is back run this callback 
-        i will give up my cpu slice so you can do other things 
 
-        event loop pushes it into a queue 
+        the event loop pushes it into a queue to keep track of tasks waiting for cpu processing but are blocked waiting for i/o completion
+        tasks pauses until i/o is complete 
+        When i/o is completed , the tasks callback is queued , ready for processing 
 
-        for every loop iteration, checks for i/o completion , run callback and back into the loop 
 
-        because of the single thread setup, we can have alot of efficiency with i/o bound tasks 
+        because of the single threading , callback based architecture of event loops
+        we can have alot of efficiency for I/o bound tasks 
 
-        in cpu bound tasks the more threads the faster , for i/o bound tasks more thread more context switching and eventually slower 
 
-        programming language 
+        For cpu bound problems, more threads the faster the program executions
+        For i/o bound problem, more threads more context switching 
 
-    tradeoff 
-        you can never block the event loop. if a task 
+        Tradeoff is you should not block the event loop if your task is cpu intensive 
+        event loop cant do anything else but to wait for the task to finish
+
+        in event loop architecture our priority is to not block the loop ever 
+
+
 
 
 
@@ -5829,9 +5824,10 @@ handling request in our server
 
             7. After some time network data packets arrives in thread's socker - i/o opertion - Runnable 
             8. Os schedular eventually resumes the thread to continue 
-            9. Tnread processes the query results - CPU bound task - Running
-            10. Serializes the http response - CPU bound tasks - Running
-            11. send responses 
+            9. Tnread processes the deserialize the bytes into our own datastructure and loading into memory- CPU bound task - Running
+            10. Does processing with our datastructure - CPU bound task - Running
+            10. Serializes into a json response - CPU bound tasks - Running
+            11. send response back 
             12.  and thread returns to the pool 
 
 
@@ -5839,7 +5835,26 @@ handling request in our server
     threading is struggles in a high concurrency requirement. 
 
 
-    
+Event loop based multiple request handling 
+
+    1. Request A arrives 
+    2. Parse http request body, query params, path variables etc 
+    3. Get database tcp connection from pool
+        Send query bytes 
+        while waiting for the i/o its gives up control, so cpu can execute more tasks 
+        and it register a callback so when the network packets return, run this piece of code 
+        that is the callback. 
+        return immediately that is give up its cpu execution 
+    4. Now a new request arrives and starts processing it and returns when there is an i/o operation
+    4. now because it is a loop running. in each iteration the event loop 
+    checks whether the i/o operation is complete or not 
+    monitor i/o completion by using os level function like epoll for linux 
+    5. After some iterations, we realizes db response is completed and network packets are back 
+        epoll returns and indicates that socket of a request    is readable. 
+    6. event loop invokes the request's callback
+    7. the callback processes the results and sends HTTP response. 
+
+    A single thread and request are handled efficiently without alot of context switching 
 
   
 
